@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)file:///C:/Users/dron/Downloads/ido-tracker_6.html -->
+<html lang="he" dir="rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>עידו | יומן גדילה</title>
+<link rel="preconnect" href="https://fonts.googleapis.com/">
+<link href="./index_files/css2" rel="stylesheet">
+<script src="./index_files/chart.umd.min.js.download"></script>
+<script src="./index_files/firebase-app-compat.js.download"></script>
+<script src="./index_files/firebase-firestore-compat.js.download"></script>
+<style>
+  :root{
+    --cream:#FBF5EA;
+    --cream-2:#F3EADA;
+    --ink:#33291F;
+    --ink-soft:#7A6E5D;
+    --honey:#E0A458;
+    --honey-deep:#C77F3A;
+    --sage:#7C9885;
+    --sage-deep:#5E7D67;
+    --rose:#D98E86;
+    --rose-deep:#B96A62;
+    --sky:#7FA8C9;
+    --line:#E7DCC7;
+    --card:#FFFFFF;
+    --shadow:0 2px 10px rgba(51,41,31,0.06);
+    --shadow-lg:0 8px 30px rgba(51,41,31,0.10);
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Rubik',sans-serif;
+    min-height:100vh;
+    padding-bottom:90px;
+  }
+  .num{font-family:'Fraunces',serif;}
+
+  header.top{
+    padding:22px 18px 16px;
+    background:linear-gradient(180deg, var(--cream-2), var(--cream));
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand .dot{
+    width:42px;height:42px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--honey), var(--honey-deep));
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif; font-weight:700; color:#fff; font-size:19px;
+    box-shadow:var(--shadow);
+    flex-shrink:0;
+  }
+  .brand h1{font-family:'Fraunces',serif; font-size:22px; margin:0; font-weight:700;}
+  .brand .age{font-size:12.5px; color:var(--ink-soft); margin-top:1px;}
+  .who-btn{
+    border:1px solid var(--line); background:var(--card); border-radius:14px;
+    padding:8px 12px; font-size:13px; color:var(--ink); font-weight:500;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+  }
+  .who-btn .avatar{width:20px;height:20px;border-radius:50%; background:var(--sage); color:#fff; font-size:11px; display:flex;align-items:center;justify-content:center; font-weight:700;}
+
+  .status-strip{
+    margin-top:14px; display:flex; gap:8px; overflow-x:auto; padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .status-strip::-webkit-scrollbar{display:none;}
+  .chip{
+    flex-shrink:0; background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:9px 13px; font-size:12.5px; display:flex; flex-direction:column; gap:2px; min-width:88px;
+    box-shadow:var(--shadow);
+  }
+  .chip .label{color:var(--ink-soft); font-size:11px;}
+  .chip .val{font-family:'Fraunces',serif; font-weight:600; font-size:15px;}
+
+  main{padding:16px; max-width:640px; margin:0 auto;}
+  section.view{display:none;}
+  section.view.active{display:block; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  h2.section-title{
+    font-family:'Fraunces',serif; font-size:18px; margin:22px 0 10px; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  h2.section-title:first-child{margin-top:2px;}
+
+  .quick-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .action-btn{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 14px; text-align:right; cursor:pointer; box-shadow:var(--shadow);
+    display:flex; flex-direction:column; gap:8px; transition:transform .12s ease;
+    position:relative; overflow:hidden;
+  }
+  .action-btn:active{transform:scale(0.97);}
+  .action-btn .icon{font-size:26px;}
+  .action-btn .title{font-weight:600; font-size:15px;}
+  .action-btn .sub{font-size:11.5px; color:var(--ink-soft);}
+  .action-btn.sleep{border-color:#cfe0d5;}
+  .action-btn.sleep.on{background:linear-gradient(135deg, var(--sage), var(--sage-deep)); color:#fff;}
+  .action-btn.sleep.on .sub{color:rgba(255,255,255,0.85);}
+  .action-btn.feed{border-color:#eddcc4;}
+  .action-btn.diaper{border-color:#efd7d3;}
+  .action-btn.milestone{border-color:#cfe0e9;}
+
+  .feed-row{width:100%;}
+
+  .timeline{margin-top:6px;}
+  .tl-item{
+    display:flex; gap:12px; padding:12px 4px; border-bottom:1px solid var(--line);
+  }
+  .tl-item.editable{cursor:pointer;}
+  .tl-item.editable:active{background:var(--cream-2);}
+  .tl-edit-hint{font-size:11px; color:var(--sky); flex-shrink:0; align-self:center;}
+  .tl-item:last-child{border-bottom:none;}
+  .tl-icon{
+    width:38px;height:38px;border-radius:50%; flex-shrink:0;
+    display:flex;align-items:center;justify-content:center; font-size:17px;
+  }
+  .tl-icon.sleep{background:#E7F0E9; }
+  .tl-icon.wake{background:#FFF3DE;}
+  .tl-icon.feed{background:#FBEBD8;}
+  .tl-icon.pee{background:#EAF3FA;}
+  .tl-icon.poop{background:#F7E5E2;}
+  .tl-icon.milestone{background:#E7EEF3;}
+  .tl-body{flex:1; min-width:0;}
+  .tl-title{font-size:14px; font-weight:500;}
+  .tl-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .tl-empty{color:var(--ink-soft); font-size:13.5px; text-align:center; padding:30px 10px;}
+
+  .card{background:var(--card); border-radius:var(--radius); border:1px solid var(--line); box-shadow:var(--shadow); padding:16px;}
+  .card + .card{margin-top:12px;}
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .stat-card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px; box-shadow:var(--shadow);}
+  .stat-card .n{font-family:'Fraunces',serif; font-size:24px; font-weight:700; color:var(--honey-deep);}
+  .stat-card .l{font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+
+  form.form-grid{display:flex; flex-direction:column; gap:12px;}
+  .field label{font-size:12.5px; color:var(--ink-soft); display:block; margin-bottom:5px;}
+  .field input, .field select, .field textarea{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:12px;
+    font-size:15px; font-family:'Rubik',sans-serif; background:#fff; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .seg{display:flex; gap:8px;}
+  .seg button{
+    flex:1; padding:10px; border-radius:12px; border:1px solid var(--line); background:#fff;
+    font-family:'Rubik',sans-serif; font-size:13.5px; cursor:pointer; color:var(--ink);
+  }
+  .seg button.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+
+  .primary-btn{
+    background:var(--honey-deep); color:#fff; border:none; border-radius:14px; padding:13px;
+    font-size:15px; font-weight:600; cursor:pointer; font-family:'Rubik',sans-serif;
+  }
+  .ghost-btn{
+    background:transparent; color:var(--ink-soft); border:1px solid var(--line); border-radius:14px;
+    padding:11px; font-size:13.5px; cursor:pointer; font-family:'Rubik',sans-serif;
+  }
+
+  .milestone-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+  .m-chip{
+    padding:9px 13px; border-radius:12px; border:1px solid var(--line); background:#fff;
+    font-size:13px; cursor:pointer;
+  }
+  .m-chip.selected{background:var(--sky); border-color:var(--sky); color:#fff;}
+
+  .milestone-log-item{display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line);}
+  .milestone-log-item:last-child{border-bottom:none;}
+  .m-badge{
+    width:34px;height:34px;border-radius:10px; background:#E7EEF3; display:flex;align-items:center;justify-content:center;
+    font-size:16px; flex-shrink:0;
+  }
+
+  .growth-tabs{display:flex; gap:8px; margin-bottom:10px;}
+  .growth-tabs button{
+    flex:1; padding:9px; border-radius:12px; border:1px solid var(--line); background:#fff; font-size:13px; cursor:pointer;
+  }
+  .growth-tabs button.active{background:var(--rose-deep); color:#fff; border-color:var(--rose-deep);}
+  .chart-wrap{position:relative; height:260px; margin-top:8px;}
+  .pct-note{font-size:11px; color:var(--ink-soft); margin-top:8px; line-height:1.6;}
+
+  nav.tabbar{
+    position:fixed; bottom:0; right:0; left:0; background:var(--card); border-top:1px solid var(--line);
+    display:flex; z-index:30; padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 16px rgba(51,41,31,0.06);
+  }
+  nav.tabbar button{
+    flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px;
+    padding:8px 2px; font-family:'Rubik',sans-serif; color:var(--ink-soft); font-size:10.5px; cursor:pointer;
+  }
+  nav.tabbar button .ic{font-size:19px;}
+  nav.tabbar button.active{color:var(--honey-deep); font-weight:600;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(51,41,31,0.45); z-index:100; display:none;
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:var(--cream); width:100%; max-width:640px; border-radius:22px 22px 0 0;
+    padding:20px 18px calc(20px + env(safe-area-inset-bottom)); max-height:88vh; overflow-y:auto;
+    animation:slideUp .25s ease;
+  }
+  @keyframes slideUp{from{transform:translateY(30px); opacity:0;} to{transform:translateY(0); opacity:1;}}
+  .modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;}
+  .modal-head h3{font-family:'Fraunces',serif; font-size:18px; margin:0;}
+  .modal-head .close{background:none; border:none; font-size:22px; color:var(--ink-soft); cursor:pointer; line-height:1;}
+
+  .toast{
+    position:fixed; bottom:96px; left:50%; transform:translateX(-50%) translateY(10px); opacity:0;
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:30px; font-size:13.5px;
+    z-index:200; transition:all .25s ease; pointer-events:none; white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .empty-hint{text-align:center; color:var(--ink-soft); font-size:13px; padding:24px 10px;}
+  .who-badge{font-size:11px; color:var(--sage-deep); background:#E7F0E9; padding:2px 8px; border-radius:8px; display:inline-block;}
+
+  ::selection{background:var(--honey); color:#fff;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-row">
+    <div class="brand">
+      <div class="dot">ע</div>
+      <div>
+        <h1 id="babyName">עידו</h1>
+        <div class="age" id="ageLine">הוסיפו תאריך לידה בהגדרות</div>
+      </div>
+    </div>
+    <button class="who-btn" id="whoBtn"><span class="avatar" id="whoAvatar">ס</span><span id="whoName">סבא דני</span></button>
+  </div>
+  <div class="status-strip" id="statusStrip">
+    <div class="chip"><div class="label">מצב</div><div class="val">🙂 ער</div></div>
+    <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">—</div></div>
+    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">—</div></div>
+    <div class="chip"><div class="label">משקל אחרון</div><div class="val">—</div></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- HOME -->
+  <section class="view active" id="view-home">
+    <h2 class="section-title">🍼 עדכון מהיר</h2>
+    <div class="quick-grid">
+      <button class="action-btn sleep" id="sleepBtn">
+        <span class="icon">😴</span>
+        <span class="title" id="sleepTitle">נרדם</span>
+        <span class="sub" id="sleepSub">לחצו כשעידו נרדם</span>
+      </button>
+      <button class="action-btn feed" id="feedBtn">
+        <span class="icon">🍼</span>
+        <span class="title">האכלה</span>
+        <span class="sub">כמות בסימ״ל</span>
+      </button>
+      <button class="action-btn diaper" id="diaperBtn">
+        <span class="icon">🧷</span>
+        <span class="title">החתלה</span>
+        <span class="sub">פיפי / קקי</span>
+      </button>
+      <button class="action-btn milestone" id="milestoneQuickBtn">
+        <span class="icon">🌟</span>
+        <span class="title">אבן דרך</span>
+        <span class="sub">משהו חדש שקרה</span>
+      </button>
+    </div>
+
+    <h2 class="section-title">📋 היום</h2>
+    <div class="card">
+      <div class="timeline" id="todayTimeline"><div class="tl-empty">עוד לא נרשם כלום היום — התחילו בעדכון מהיר למעלה 👆</div></div>
+    </div>
+  </section>
+
+  <!-- GROWTH -->
+  <section class="view" id="view-growth">
+    <h2 class="section-title">📈 גדילה</h2>
+    <div class="card">
+      <div class="growth-tabs">
+        <button class="active" data-metric="weight">משקל</button>
+        <button data-metric="height">גובה</button>
+      </div>
+      <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
+      <p class="pct-note">קווי האחוזונים (3, 15, 50, 85, 97) מבוססים על עקומות הגדילה של ארגון הבריאות העולמי (WHO) לבנים 0–24 חודשים, לצורך התמצאות כללית בלבד ולא כתחליף למעקב רפואי.</p>
+    </div>
+
+    <h2 class="section-title">➕ הוספת מדידה</h2>
+    <div class="card">
+      <form class="form-grid" id="growthForm">
+        <div class="two-col">
+          <div class="field"><label>תאריך</label><input type="date" id="gDate" required=""></div>
+          <div class="field"><label>גיל בימים</label><input type="text" id="gAgeShow" disabled="" placeholder="—"></div>
+        </div>
+        <div class="two-col">
+          <div class="field"><label>משקל (ק״ג)</label><input type="number" step="0.01" id="gWeight" placeholder="לדוגמה 7.20"></div>
+          <div class="field"><label>גובה (ס״מ)</label><input type="number" step="0.1" id="gHeight" placeholder="לדוגמה 65.0"></div>
+        </div>
+        <button type="submit" class="primary-btn">שמירת מדידה</button>
+      </form>
+    </div>
+
+    <h2 class="section-title">🗂 היסטוריה</h2>
+    <div class="card" id="growthHistory"><div class="empty-hint">עוד אין מדידות</div></div>
+  </section>
+
+  <!-- MILESTONES -->
+  <section class="view" id="view-milestones">
+    <h2 class="section-title">🌟 אבני דרך</h2>
+    <div class="card">
+      <button class="primary-btn" id="openMilestoneBtn" style="width:100%">+ הוספת אבן דרך חדשה</button>
+    </div>
+    <h2 class="section-title">היסטוריה</h2>
+    <div class="card" id="milestoneList"></div>
+  </section>
+
+  <!-- STATS -->
+  <section class="view" id="view-stats">
+    <h2 class="section-title">📊 סטטיסטיקה (7 ימים אחרונים)</h2>
+    <div class="stat-grid" id="statCards"></div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">שעות שינה ליום</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="sleepStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">כמות אכילה יומית (מ״ל)</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="feedStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">החתלות ליום</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="diaperStatChart"></canvas></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="view-settings">
+    <h2 class="section-title">⚙️ הגדרות</h2>
+    <div class="card">
+      <form class="form-grid" id="settingsForm">
+        <div class="field"><label>שם התינוק</label><input type="text" id="setName" value="עידו"></div>
+        <div class="field"><label>תאריך לידה</label><input type="date" id="setBirth"></div>
+        <button type="submit" class="primary-btn">שמירה</button>
+      </form>
+    </div>
+    <h2 class="section-title">👤 מי מעדכן</h2>
+    <div class="card">
+      <p style="font-size:13px; color:var(--ink-soft); margin-top:0;">השם שלכם ישמר במכשיר הזה בלבד, כדי שנדע מי עדכן כל רשומה. הנתונים עצמם משותפים לכל מי שפותח את האפליקציה מהקישור.</p>
+      <form class="form-grid" id="whoForm">
+        <div class="field"><label>איך קוראים לך?</label><input type="text" id="whoInput" placeholder="למשל: אמא, סבתא רותי..."></div>
+        <button type="submit" class="primary-btn">שמירה</button>
+      </form>
+    </div>
+    <h2 class="section-title">💾 גיבוי</h2>
+    <div class="card" style="display:flex; gap:10px;">
+      <button class="ghost-btn" id="exportBtn" style="flex:1;">ייצוא נתונים</button>
+      <button class="ghost-btn" id="importBtn" style="flex:1;">ייבוא נתונים</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabbar">
+  <button class="active" data-view="home"><span class="ic">🏠</span>בית</button>
+  <button data-view="growth"><span class="ic">📈</span>גדילה</button>
+  <button data-view="milestones"><span class="ic">🌟</span>אבני דרך</button>
+  <button data-view="stats"><span class="ic">📊</span>סטטיסטיקה</button>
+  <button data-view="settings"><span class="ic">⚙️</span>הגדרות</button>
+</nav>
+
+<!-- SLEEP MODAL -->
+<div class="modal-overlay" id="sleepModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="sleepModalTitle">😴 שינה</h3><button class="close" data-close="sleepModal">×</button></div>
+    <form class="form-grid" id="sleepForm">
+      <input type="hidden" id="sleepEditId" value="">
+      <div class="field">
+        <label>סוג</label>
+        <div class="seg" id="sleepTypeSeg">
+          <button type="button" data-val="sleep">נרדם</button>
+          <button type="button" data-val="wake">התעורר</button>
+        </div>
+      </div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="sleepTime" required=""></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+      <button type="button" class="ghost-btn" id="sleepDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
+    </form>
+  </div>
+</div>
+
+<!-- FEED MODAL -->
+<div class="modal-overlay" id="feedModal">
+  <div class="modal">
+    <div class="modal-head"><h3>🍼 האכלה</h3><button class="close" data-close="feedModal">×</button></div>
+    <form class="form-grid" id="feedForm">
+      <div class="field"><label>כמות (מ״ל)</label><input type="number" id="feedMl" placeholder="לדוגמה 120" required=""></div>
+      <div class="field"><label>שעה</label><input type="datetime-local" id="feedTime" required=""></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+    </form>
+  </div>
+</div>
+
+<!-- DIAPER MODAL -->
+<div class="modal-overlay" id="diaperModal">
+  <div class="modal">
+    <div class="modal-head"><h3>🧷 החתלה</h3><button class="close" data-close="diaperModal">×</button></div>
+    <form class="form-grid" id="diaperForm">
+      <div class="field">
+        <label>סוג</label>
+        <div class="seg" id="diaperType">
+          <button type="button" data-val="pee" class="active">פיפי</button>
+          <button type="button" data-val="poop">קקי</button>
+          <button type="button" data-val="both">שניהם</button>
+        </div>
+      </div>
+      <div class="field" id="consistencyField">
+        <label>מרקם (אם קקי)</label>
+        <select id="poopConsistency">
+          <option value="נוזלי">נוזלי</option>
+          <option value="רך" selected="">רך</option>
+          <option value="מוצק">מוצק</option>
+          <option value="קשה">קשה</option>
+        </select>
+      </div>
+      <div class="field"><label>שעה</label><input type="datetime-local" id="diaperTime" required=""></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+    </form>
+  </div>
+</div>
+
+<!-- MILESTONE MODAL -->
+<div class="modal-overlay" id="milestoneModal">
+  <div class="modal">
+    <div class="modal-head"><h3>🌟 אבן דרך חדשה</h3><button class="close" data-close="milestoneModal">×</button></div>
+    <div class="milestone-chips" id="milestonePresets"><div class="m-chip" data-p="התהפך מהבטן לגב">התהפך מהבטן לגב</div><div class="m-chip" data-p="התהפך מהגב לבטן">התהפך מהגב לבטן</div><div class="m-chip" data-p="ישב לבד">ישב לבד</div><div class="m-chip" data-p="זחל">זחל</div><div class="m-chip" data-p="עמד לבד (פעם ראשונה)">עמד לבד (פעם ראשונה)</div><div class="m-chip" data-p="צעד ראשון">צעד ראשון</div><div class="m-chip" data-p="חיוך ראשון">חיוך ראשון</div><div class="m-chip" data-p="צחוק ראשון">צחוק ראשון</div><div class="m-chip" data-p="מילה ראשונה">מילה ראשונה</div><div class="m-chip" data-p="שן ראשונה">שן ראשונה</div></div>
+    <form class="form-grid" id="milestoneForm">
+      <div class="field"><label>איזו אבן דרך?</label><input type="text" id="mTitle" placeholder="לדוגמה: התהפך מהבטן לגב" required=""></div>
+      <div class="field"><label>פרטים (אופציונלי)</label><textarea id="mDetails" placeholder="לדוגמה: לכיוון ימין, בזמן משחק על השטיח"></textarea></div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mTime" required=""></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- WHO reference data (boys, 0-24 months), approximate, for general orientation ---------- */
+const WHO_WEIGHT = { // months: [P3,P15,P50,P85,P97] kg
+  0:[2.5,2.9,3.3,3.9,4.4], 1:[3.4,3.9,4.5,5.1,5.8], 2:[4.3,4.9,5.6,6.3,7.1],
+  3:[5.0,5.7,6.4,7.2,8.0], 4:[5.6,6.2,7.0,7.8,8.7], 5:[6.0,6.7,7.5,8.4,9.3],
+  6:[6.4,7.1,7.9,8.8,9.8], 9:[7.1,7.8,8.9,9.9,11.0], 12:[7.7,8.6,9.6,10.8,12.0],
+  15:[8.3,9.2,10.3,11.5,12.8], 18:[8.8,9.8,10.9,12.2,13.7], 21:[9.2,10.3,11.5,12.9,14.5],
+  24:[9.7,10.8,12.2,13.6,15.3]
+};
+const WHO_HEIGHT = {
+  0:[46.1,47.9,49.9,51.8,53.7], 1:[50.8,52.7,54.7,56.7,58.6], 2:[54.4,56.4,58.4,60.4,62.4],
+  3:[57.3,59.4,61.4,63.5,65.5], 4:[59.7,61.8,63.9,66.0,68.0], 5:[61.7,63.8,65.9,68.0,70.1],
+  6:[63.3,65.5,67.6,69.8,72.0], 9:[67.0,69.3,71.6,73.9,76.2], 12:[71.0,73.4,75.7,78.1,80.5],
+  15:[73.5,76.0,78.5,81.0,83.5], 18:[76.0,78.6,81.2,83.8,86.4], 21:[78.4,81.1,83.8,86.5,89.2],
+  24:[80.5,83.4,86.2,89.0,91.8]
+};
+const MONTHS_KEYS = [0,1,2,3,4,5,6,9,12,15,18,21,24];
+
+/* ---------- state ---------- */
+let DATA = { events: [], growth: [], milestones: [] };
+let SETTINGS = { name:"עידו", birth: null };
+let ME = localStorage.getItem('ido_who') || "";
+let growthMetric = 'weight';
+let diaperTypeVal = 'pee';
+let charts = {};
+
+const $ = (id) => document.getElementById(id);
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function nowLocalInput(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,16);
+}
+function fmtTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
+}
+function fmtDateTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'}) + ' · ' + fmtTime(iso);
+}
+function isToday(iso){
+  const d = new Date(iso), t = new Date();
+  return d.toDateString() === t.toDateString();
+}
+function daysAgo(iso, n){
+  const d = new Date(iso), t = new Date();
+  t.setHours(0,0,0,0);
+  const cmp = new Date(d); cmp.setHours(0,0,0,0);
+  const diff = Math.round((t - cmp)/86400000);
+  return diff === n;
+}
+
+/* ---------- storage (Firebase Firestore, real-time) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCK9Z3Qm2AOsI03df98eWLgsqNxyxo8mDc",
+  authDomain: "kids-tracking-4aba8.firebaseapp.com",
+  projectId: "kids-tracking-4aba8",
+  storageBucket: "kids-tracking-4aba8.firebasestorage.app",
+  messagingSenderId: "40764754443",
+  appId: "1:40764754443:web:c2bd607ddcdda9cfa5d50e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const dataDocRef = db.collection('ido').doc('data');
+const settingsDocRef = db.collection('ido').doc('settings');
+
+function initRealtimeSync(){
+  dataDocRef.onSnapshot((snap)=>{
+    const d = snap.exists ? snap.data() : {};
+    DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[] };
+    refreshAll();
+  }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
+
+  settingsDocRef.onSnapshot((snap)=>{
+    if(snap.exists){ SETTINGS = snap.data(); }
+    $('setName').value = SETTINGS.name || 'עידו';
+    $('setBirth').value = SETTINGS.birth || '';
+    updateGAgeShow();
+    refreshHeader();
+  }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
+}
+async function saveData(){
+  try{ await dataDocRef.set(DATA); }
+  catch(e){ toast('שגיאה בשמירה — נסו שוב'); }
+}
+async function saveSettings(){
+  try{ await settingsDocRef.set(SETTINGS); }
+  catch(e){ toast('שגיאה בשמירה'); }
+}
+
+/* ---------- who am I ---------- */
+function refreshWho(){
+  $('whoName').textContent = ME || 'מי אני?';
+  $('whoAvatar').textContent = ME ? ME.trim()[0] : '?';
+  $('whoInput').value = ME;
+}
+$('whoBtn').addEventListener('click', ()=>{ switchView('settings'); });
+$('whoForm').addEventListener('submit', (e)=>{
+  e.preventDefault();
+  ME = $('whoInput').value.trim() || 'לא ידוע';
+  localStorage.setItem('ido_who', ME);
+  refreshWho();
+  toast('נשמר, שלום ' + ME + ' 👋');
+});
+
+/* ---------- navigation ---------- */
+function switchView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav.tabbar button').forEach(b=>b.classList.remove('active'));
+  $('view-'+name).classList.add('active');
+  document.querySelector(`nav.tabbar button[data-view="${name}"]`).classList.add('active');
+  if(name==='growth') renderGrowthChart();
+  if(name==='stats') renderStats();
+  if(name==='milestones') renderMilestoneList();
+}
+document.querySelectorAll('nav.tabbar button').forEach(b=>{
+  b.addEventListener('click', ()=>switchView(b.dataset.view));
+});
+
+/* ---------- modals ---------- */
+function openModal(id){ $(id).classList.add('open'); }
+function closeModal(id){ $(id).classList.remove('open'); }
+document.querySelectorAll('[data-close]').forEach(b=>{
+  b.addEventListener('click', ()=>closeModal(b.dataset.close));
+});
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click', (e)=>{ if(e.target===ov) ov.classList.remove('open'); });
+});
+
+/* ---------- age / header ---------- */
+function ageStringFrom(birth, atDate){
+  if(!birth) return null;
+  const b = new Date(birth); const now = atDate ? new Date(atDate) : new Date();
+  let months = (now.getFullYear()-b.getFullYear())*12 + (now.getMonth()-b.getMonth());
+  if(now.getDate() < b.getDate()) months--;
+  const days = Math.floor((now - b)/86400000);
+  if(months < 1) return `בן ${days} ימים`;
+  const remDays = Math.floor((now - new Date(b.getFullYear(), b.getMonth()+months, b.getDate()))/86400000);
+  return `בן ${months} חודשים${remDays>0 ? ' ו-'+remDays+' ימים' : ''}`;
+}
+function ageDaysFrom(birth, atDate){
+  if(!birth) return null;
+  const b = new Date(birth); const now = atDate ? new Date(atDate) : new Date();
+  return Math.floor((now-b)/86400000);
+}
+function refreshHeader(){
+  $('babyName').textContent = SETTINGS.name || 'עידו';
+  $('ageLine').textContent = SETTINGS.birth ? ageStringFrom(SETTINGS.birth) : 'הוסיפו תאריך לידה בהגדרות';
+}
+
+/* ---------- status strip ---------- */
+function lastSleepEvent(){
+  const sleepEvents = DATA.events.filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(b.time)-new Date(a.time));
+  return sleepEvents[0] || null;
+}
+function isAsleep(){
+  const last = lastSleepEvent();
+  return last && last.type==='sleep';
+}
+function lastFeed(){
+  const f = DATA.events.filter(e=>e.type==='feed').sort((a,b)=>new Date(b.time)-new Date(a.time));
+  return f[0] || null;
+}
+function lastDiaper(){
+  const d = DATA.events.filter(e=>e.type==='diaper').sort((a,b)=>new Date(b.time)-new Date(a.time));
+  return d[0] || null;
+}
+function renderStatusStrip(){
+  const strip = $('statusStrip');
+  const asleep = isAsleep();
+  const lf = lastFeed();
+  const ld = lastDiaper();
+  const lastW = [...DATA.growth].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+  strip.innerHTML = `
+    <div class="chip"><div class="label">מצב</div><div class="val">${asleep?'😴 ישן':'🙂 ער'}</div></div>
+    <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div></div>
+    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div></div>
+    <div class="chip"><div class="label">משקל אחרון</div><div class="val">${lastW?lastW.weight+' ק"ג':'—'}</div></div>
+  `;
+}
+
+/* ---------- sleep toggle ---------- */
+function refreshSleepBtn(){
+  const btn = $('sleepBtn');
+  const asleep = isAsleep();
+  btn.classList.toggle('on', asleep);
+  $('sleepTitle').textContent = asleep ? 'התעורר' : 'נרדם';
+  $('sleepSub').textContent = asleep ? 'לחצו כשעידו קם' : 'לחצו כשעידו נרדם';
+}
+$('sleepBtn').addEventListener('click', ()=>{
+  const asleep = isAsleep();
+  openSleepModal(null, asleep ? 'wake' : 'sleep');
+});
+
+function setSleepTypeSeg(val){
+  document.querySelectorAll('#sleepTypeSeg button').forEach(b=>b.classList.toggle('active', b.dataset.val===val));
+}
+document.querySelectorAll('#sleepTypeSeg button').forEach(b=>{
+  b.addEventListener('click', ()=>setSleepTypeSeg(b.dataset.val));
+});
+function openSleepModal(editId, defaultType){
+  if(editId){
+    const ev = DATA.events.find(e=>e.id===editId);
+    if(!ev) return;
+    $('sleepModalTitle').textContent = ev.type==='sleep' ? '😴 עריכת הירדמות' : '☀️ עריכת התעוררות';
+    $('sleepEditId').value = editId;
+    setSleepTypeSeg(ev.type);
+    const d = new Date(ev.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    $('sleepTime').value = d.toISOString().slice(0,16);
+    $('sleepDeleteBtn').style.display = 'block';
+  } else {
+    $('sleepModalTitle').textContent = '😴 שינה';
+    $('sleepEditId').value = '';
+    setSleepTypeSeg(defaultType || 'sleep');
+    $('sleepTime').value = nowLocalInput();
+    $('sleepDeleteBtn').style.display = 'none';
+  }
+  openModal('sleepModal');
+}
+$('sleepForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const editId = $('sleepEditId').value;
+  const type = document.querySelector('#sleepTypeSeg button.active')?.dataset.val || 'sleep';
+  const time = new Date($('sleepTime').value).toISOString();
+  if(editId){
+    const ev = DATA.events.find(x=>x.id===editId);
+    if(ev){ ev.type = type; ev.time = time; ev.editedBy = ME||''; }
+  } else {
+    DATA.events.push({ id:uid(), type, time, by:ME||'' });
+  }
+  await saveData();
+  closeModal('sleepModal');
+  toast(editId ? 'הרשומה עודכנה' : (type==='wake' ? 'בוקר טוב! ☀️' : 'לילה טוב 🌙'));
+  refreshAll();
+});
+$('sleepDeleteBtn').addEventListener('click', async ()=>{
+  const editId = $('sleepEditId').value;
+  if(!editId) return;
+  if(!confirm('למחוק את הרשומה הזו?')) return;
+  DATA.events = DATA.events.filter(x=>x.id!==editId);
+  await saveData();
+  closeModal('sleepModal');
+  toast('הרשומה נמחקה');
+  refreshAll();
+});
+
+/* ---------- feed ---------- */
+$('feedBtn').addEventListener('click', ()=>{
+  $('feedTime').value = nowLocalInput();
+  $('feedMl').value = '';
+  openModal('feedModal');
+});
+$('feedForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  DATA.events.push({ id:uid(), type:'feed', ml:Number($('feedMl').value), time:new Date($('feedTime').value).toISOString(), by:ME||'' });
+  await saveData();
+  closeModal('feedModal');
+  toast('האכלה נשמרה 🍼');
+  refreshAll();
+});
+
+/* ---------- diaper ---------- */
+$('diaperBtn').addEventListener('click', ()=>{
+  $('diaperTime').value = nowLocalInput();
+  diaperTypeVal = 'pee';
+  document.querySelectorAll('#diaperType button').forEach(b=>b.classList.toggle('active', b.dataset.val==='pee'));
+  $('consistencyField').style.display = 'none';
+  openModal('diaperModal');
+});
+document.querySelectorAll('#diaperType button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    diaperTypeVal = b.dataset.val;
+    document.querySelectorAll('#diaperType button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    $('consistencyField').style.display = (diaperTypeVal==='pee') ? 'none' : 'block';
+  });
+});
+$('diaperForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  DATA.events.push({
+    id:uid(), type:'diaper', kind:diaperTypeVal,
+    consistency: diaperTypeVal!=='pee' ? $('poopConsistency').value : null,
+    time:new Date($('diaperTime').value).toISOString(), by:ME||''
+  });
+  await saveData();
+  closeModal('diaperModal');
+  toast('החתלה נשמרה 🧷');
+  refreshAll();
+});
+
+/* ---------- milestones ---------- */
+const MILESTONE_PRESETS = [
+  'התהפך מהבטן לגב', 'התהפך מהגב לבטן', 'ישב לבד', 'זחל', 'עמד לבד (פעם ראשונה)',
+  'צעד ראשון', 'חיוך ראשון', 'צחוק ראשון', 'מילה ראשונה', 'שן ראשונה'
+];
+function renderMilestonePresets(){
+  $('milestonePresets').innerHTML = MILESTONE_PRESETS.map(p=>`<div class="m-chip" data-p="${p}">${p}</div>`).join('');
+  document.querySelectorAll('#milestonePresets .m-chip').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      $('mTitle').value = c.dataset.p;
+      document.querySelectorAll('#milestonePresets .m-chip').forEach(x=>x.classList.remove('selected'));
+      c.classList.add('selected');
+    });
+  });
+}
+$('milestoneQuickBtn').addEventListener('click', ()=>openMilestoneModal());
+$('openMilestoneBtn').addEventListener('click', ()=>openMilestoneModal());
+function openMilestoneModal(){
+  $('mTime').value = nowLocalInput();
+  $('mTitle').value = '';
+  $('mDetails').value = '';
+  document.querySelectorAll('#milestonePresets .m-chip').forEach(x=>x.classList.remove('selected'));
+  openModal('milestoneModal');
+}
+$('milestoneForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  DATA.milestones.push({
+    id:uid(), title:$('mTitle').value.trim(), details:$('mDetails').value.trim(),
+    time:new Date($('mTime').value).toISOString(), by:ME||''
+  });
+  await saveData();
+  closeModal('milestoneModal');
+  toast('אבן דרך נשמרה 🌟');
+  refreshAll();
+});
+function milestoneIcon(title){
+  if(title.includes('שן')) return '🦷';
+  if(title.includes('צעד')||title.includes('הלך')) return '👣';
+  if(title.includes('עמד')) return '🧍';
+  if(title.includes('חיוך')) return '😊';
+  if(title.includes('צחוק')) return '😄';
+  if(title.includes('מילה')) return '💬';
+  if(title.includes('התהפך')) return '🔄';
+  if(title.includes('ישב')) return '🪑';
+  if(title.includes('זחל')) return '🐢';
+  return '🌟';
+}
+function renderMilestoneList(){
+  const list = [...DATA.milestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(list.length===0){ $('milestoneList').innerHTML = '<div class="empty-hint">עוד לא נרשמו אבני דרך — הראשונה תמיד הכי מרגשת ✨</div>'; return; }
+  $('milestoneList').innerHTML = list.map(m=>`
+    <div class="milestone-log-item">
+      <div class="m-badge">${milestoneIcon(m.title)}</div>
+      <div class="tl-body">
+        <div class="tl-title">${m.title}</div>
+        ${m.details?`<div class="tl-meta">${m.details}</div>`:''}
+        <div class="tl-meta">${fmtDateTime(m.time)}${m.by?` · <span class="who-badge">${m.by}</span>`:''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------- today timeline ---------- */
+function timelineIconClass(ev){
+  if(ev.type==='sleep') return 'sleep';
+  if(ev.type==='wake') return 'wake';
+  if(ev.type==='feed') return 'feed';
+  if(ev.type==='diaper') return ev.kind==='pee' ? 'pee' : 'poop';
+  return 'milestone';
+}
+function timelineIcon(ev){
+  if(ev.type==='sleep') return '😴';
+  if(ev.type==='wake') return '☀️';
+  if(ev.type==='feed') return '🍼';
+  if(ev.type==='diaper') return ev.kind==='pee' ? '💧' : (ev.kind==='both' ? '🧷' : '💩');
+  return '🌟';
+}
+function timelineTitle(ev){
+  if(ev.type==='sleep') return 'נרדם';
+  if(ev.type==='wake') return 'התעורר';
+  if(ev.type==='feed') return `האכלה — ${ev.ml} מ"ל`;
+  if(ev.type==='diaper'){
+    if(ev.kind==='pee') return 'פיפי';
+    if(ev.kind==='poop') return `קקי${ev.consistency?' — '+ev.consistency:''}`;
+    return `פיפי + קקי${ev.consistency?' — '+ev.consistency:''}`;
+  }
+  return ev.title;
+}
+function renderTodayTimeline(){
+  const todayEvents = DATA.events.filter(e=>isToday(e.time)).map(e=>({...e, _kind:'event'}));
+  const todayMilestones = DATA.milestones.filter(m=>isToday(m.time)).map(m=>({...m, type:'milestone', _kind:'milestone'}));
+  const all = [...todayEvents, ...todayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">עוד לא נרשם כלום היום — התחילו בעדכון מהיר למעלה 👆</div>'; return; }
+  $('todayTimeline').innerHTML = all.map(ev=>{
+    const isSleepType = (ev.type==='sleep'||ev.type==='wake');
+    return `
+    <div class="tl-item${isSleepType?' editable':''}" ${isSleepType?`data-edit-id="${ev.id}"`:''}>
+      <div class="tl-icon ${timelineIconClass(ev)}">${timelineIcon(ev)}</div>
+      <div class="tl-body">
+        <div class="tl-title">${timelineTitle(ev)}</div>
+        <div class="tl-meta">${fmtTime(ev.time)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
+      </div>
+      ${isSleepType?'<div class="tl-edit-hint">עריכה ✎</div>':''}
+    </div>
+  `;}).join('');
+  document.querySelectorAll('#todayTimeline .tl-item.editable').forEach(el=>{
+    el.addEventListener('click', ()=>openSleepModal(el.dataset.editId));
+  });
+}
+
+/* ---------- growth ---------- */
+$('gDate').addEventListener('change', updateGAgeShow);
+function updateGAgeShow(){
+  if(SETTINGS.birth && $('gDate').value){
+    const days = ageDaysFrom(SETTINGS.birth, $('gDate').value);
+    $('gAgeShow').value = days!==null ? days + ' ימים' : '';
+  }
+}
+$('growthForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const w = $('gWeight').value ? Number($('gWeight').value) : null;
+  const h = $('gHeight').value ? Number($('gHeight').value) : null;
+  if(w===null && h===null){ toast('הזינו משקל או גובה'); return; }
+  DATA.growth.push({ id:uid(), date:$('gDate').value, weight:w, height:h, by:ME||'' });
+  await saveData();
+  toast('מדידה נשמרה 📈');
+  $('growthForm').reset();
+  $('gDate').value = new Date().toISOString().slice(0,10);
+  updateGAgeShow();
+  refreshAll();
+});
+function renderGrowthHistory(){
+  const list = [...DATA.growth].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  if(list.length===0){ $('growthHistory').innerHTML = '<div class="empty-hint">עוד אין מדידות</div>'; return; }
+  $('growthHistory').innerHTML = list.map(g=>`
+    <div class="tl-item">
+      <div class="tl-icon milestone">📏</div>
+      <div class="tl-body">
+        <div class="tl-title">${g.weight?g.weight+' ק"ג':''}${g.weight&&g.height?' · ':''}${g.height?g.height+' ס"מ':''}</div>
+        <div class="tl-meta">${new Date(g.date).toLocaleDateString('he-IL')}${g.by?` · <span class="who-badge">${g.by}</span>`:''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+document.querySelectorAll('.growth-tabs button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.growth-tabs button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    growthMetric = b.dataset.metric;
+    renderGrowthChart();
+  });
+});
+function renderGrowthChart(){
+  const ctx = $('growthChart');
+  const who = growthMetric==='weight' ? WHO_WEIGHT : WHO_HEIGHT;
+  const toPts = (idx)=> MONTHS_KEYS.map(m=>({x:m, y:who[m][idx]}));
+  const p3 = toPts(0), p15 = toPts(1), p50 = toPts(2), p85 = toPts(3), p97 = toPts(4);
+
+  let childPoints = [];
+  if(SETTINGS.birth){
+    childPoints = DATA.growth
+      .filter(g=> growthMetric==='weight' ? g.weight!=null : g.height!=null)
+      .map(g=>({ x: ageDaysFrom(SETTINGS.birth, g.date)/30.4375, y: growthMetric==='weight'?g.weight:g.height }))
+      .sort((a,b)=>a.x-b.x);
+  }
+
+  if(charts.growth) charts.growth.destroy();
+  charts.growth = new Chart(ctx, {
+    type:'line',
+    data:{
+      datasets:[
+        { label:'97', data:p97, borderColor:'#E7DCC7', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'85', data:p85, borderColor:'#DCC9A3', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'50 (חציון)', data:p50, borderColor:'#C77F3A', borderWidth:2, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'15', data:p15, borderColor:'#DCC9A3', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'3', data:p3, borderColor:'#E7DCC7', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'עידו', data: childPoints, borderColor:'#5E7D67', backgroundColor:'#5E7D67', showLine:true,
+          borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#5E7D67', tension:0.2, parsing:false }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'nearest', intersect:false },
+      scales:{
+        x:{ type:'linear', min:0, max:24, ticks:{stepSize:3}, title:{display:true, text:'גיל (חודשים)'}, grid:{color:'#F0E8D8'} },
+        y:{ title:{display:true, text: growthMetric==='weight' ? 'ק"ג' : 'ס"מ'}, grid:{color:'#F0E8D8'} }
+      },
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{size:10} } } }
+    }
+  });
+}
+
+/* ---------- stats ---------- */
+function renderStats(){
+  const days = [];
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push(d);
+  }
+  const dayLabels = days.map(d=>d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'}));
+
+  // sleep hours per day: sum durations between sleep->wake within that day (approx)
+  const sleepEvents = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const sleepByDay = days.map(()=>0);
+  for(let i=0;i<sleepEvents.length-1;i++){
+    if(sleepEvents[i].type==='sleep' && sleepEvents[i+1].type==='wake'){
+      const start = new Date(sleepEvents[i].time), end = new Date(sleepEvents[i+1].time);
+      const hours = (end-start)/3600000;
+      days.forEach((d, idx)=>{
+        if(start.toDateString()===d.toDateString()) sleepByDay[idx]+=hours;
+      });
+    }
+  }
+
+  const feedByDay = days.map(d=>{
+    return DATA.events.filter(e=>e.type==='feed' && new Date(e.time).toDateString()===d.toDateString())
+      .reduce((s,e)=>s+(e.ml||0),0);
+  });
+  const diaperByDay = days.map(d=>{
+    return DATA.events.filter(e=>e.type==='diaper' && new Date(e.time).toDateString()===d.toDateString()).length;
+  });
+
+  const avgSleep = (sleepByDay.reduce((a,b)=>a+b,0)/7).toFixed(1);
+  const avgFeed = Math.round(feedByDay.reduce((a,b)=>a+b,0)/7);
+  const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/7).toFixed(1);
+  const totalMilestones = DATA.milestones.length;
+
+  $('statCards').innerHTML = `
+    <div class="stat-card"><div class="n num">${avgSleep}</div><div class="l">שעות שינה, ממוצע יומי</div></div>
+    <div class="stat-card"><div class="n num">${avgFeed}</div><div class="l">מ"ל אכילה, ממוצע יומי</div></div>
+    <div class="stat-card"><div class="n num">${avgDiaper}</div><div class="l">החתלות ליום, ממוצע</div></div>
+    <div class="stat-card"><div class="n num">${totalMilestones}</div><div class="l">אבני דרך עד כה</div></div>
+  `;
+
+  if(charts.sleepStat) charts.sleepStat.destroy();
+  charts.sleepStat = new Chart($('sleepStatChart'), {
+    type:'bar',
+    data:{ labels: dayLabels, datasets:[{ data: sleepByDay.map(v=>+v.toFixed(1)), backgroundColor:'#7C9885', borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ title:{display:true,text:'שעות'}, grid:{color:'#F0E8D8'} }, x:{ grid:{display:false} } } }
+  });
+  if(charts.feedStat) charts.feedStat.destroy();
+  charts.feedStat = new Chart($('feedStatChart'), {
+    type:'bar',
+    data:{ labels: dayLabels, datasets:[{ data: feedByDay, backgroundColor:'#E0A458', borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ title:{display:true,text:'מ"ל'}, grid:{color:'#F0E8D8'} }, x:{ grid:{display:false} } } }
+  });
+  if(charts.diaperStat) charts.diaperStat.destroy();
+  charts.diaperStat = new Chart($('diaperStatChart'), {
+    type:'bar',
+    data:{ labels: dayLabels, datasets:[{ data: diaperByDay, backgroundColor:'#D98E86', borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ title:{display:true,text:'מספר'}, grid:{color:'#F0E8D8'} }, x:{ grid:{display:false} } } }
+  });
+}
+
+/* ---------- settings ---------- */
+$('settingsForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  SETTINGS.name = $('setName').value.trim() || 'עידו';
+  SETTINGS.birth = $('setBirth').value || null;
+  await saveSettings();
+  refreshHeader();
+  toast('ההגדרות נשמרו');
+  updateGAgeShow();
+});
+$('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify({DATA, SETTINGS}, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ido-data-export.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+$('importBtn').addEventListener('click', ()=>{ $('importFile').value = ''; $('importFile').click(); });
+$('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    if(!parsed || !parsed.DATA){ toast('קובץ לא תקין'); return; }
+    const summary = `${(parsed.DATA.events||[]).length} אירועים, ${(parsed.DATA.growth||[]).length} מדידות, ${(parsed.DATA.milestones||[]).length} אבני דרך`;
+    if(!confirm(`לייבא ${summary}? זה יחליף את כל הנתונים המשותפים הנוכחיים לכולם.`)) return;
+    DATA = {
+      events: parsed.DATA.events || [],
+      growth: parsed.DATA.growth || [],
+      milestones: parsed.DATA.milestones || []
+    };
+    if(parsed.SETTINGS){ SETTINGS = parsed.SETTINGS; }
+    await saveData();
+    await saveSettings();
+    $('setName').value = SETTINGS.name || 'עידו';
+    $('setBirth').value = SETTINGS.birth || '';
+    updateGAgeShow();
+    refreshAll();
+    toast('הנתונים יובאו בהצלחה');
+  }catch(err){
+    toast('שגיאה בקריאת הקובץ');
+  }
+});
+
+/* ---------- refresh everything ---------- */
+function refreshAll(){
+  refreshHeader();
+  renderStatusStrip();
+  refreshSleepBtn();
+  renderTodayTimeline();
+  renderGrowthHistory();
+  if(document.getElementById('view-growth').classList.contains('active')) renderGrowthChart();
+  if(document.getElementById('view-stats').classList.contains('active')) renderStats();
+  if(document.getElementById('view-milestones').classList.contains('active')) renderMilestoneList();
+}
+
+/* ---------- init ---------- */
+function init(){
+  refreshWho();
+  $('gDate').value = new Date().toISOString().slice(0,10);
+  renderMilestonePresets();
+  initRealtimeSync();
+  if(!ME){ switchView('settings'); toast('ברוכים הבאים! ספרו לנו מי אתם 👋'); }
+}
+init();
+</script>
+
+
+</body></html>
