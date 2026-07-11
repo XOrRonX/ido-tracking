@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<!-- saved from url=(0051)file:///C:/Users/dron/Downloads/ido-tracker_11.html -->
-<html lang="he" dir="rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>עידו | יומן גדילה</title>
-<link rel="preconnect" href="https://fonts.googleapis.com/">
-<link href="./עידו _ יומן גדילה_files/css2" rel="stylesheet">
-<script src="./עידו _ יומן גדילה_files/chart.umd.min.js.download"></script>
-<script src="./עידו _ יומן גדילה_files/firebase-app-compat.js.download"></script>
-<script src="./עידו _ יומן גדילה_files/firebase-firestore-compat.js.download"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --cream:#FBF5EA;
@@ -233,28 +233,23 @@
       <div class="dot">ע</div>
       <div>
         <h1 id="babyName">עידו</h1>
-        <div class="age" id="ageLine">בן 5 חודשים ו-1 ימים</div>
+        <div class="age" id="ageLine">מחשב גיל…</div>
       </div>
     </div>
-    <button class="who-btn" id="whoBtn"><span class="avatar" id="whoAvatar">ס</span><span id="whoName">סבא דני</span></button>
+    <button class="who-btn" id="whoBtn"><span class="avatar" id="whoAvatar">?</span><span id="whoName">מי אני?</span></button>
   </div>
-  <div class="status-strip" id="statusStrip">
-    <div class="chip"><div class="label">מצב</div><div class="val">🙂 ער</div></div>
-    <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">—</div></div>
-    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">—</div></div>
-    <div class="chip"><div class="label">משקל אחרון</div><div class="val">7.43 ק"ג</div></div>
-  </div>
+  <div class="status-strip" id="statusStrip"></div>
 </header>
 
 <main>
 
   <!-- HOME -->
-  <section class="view" id="view-home">
+  <section class="view active" id="view-home">
     <h2 class="section-title">🍼 עדכון מהיר</h2>
     <div class="quick-grid">
       <button class="action-btn sleep" id="sleepBtn">
         <span class="icon">😴</span>
-        <span class="title" id="sleepTitle">נרדם</span>
+        <span class="title" id="sleepTitle">לישון</span>
         <span class="sub" id="sleepSub">לחצו כשעידו נרדם</span>
       </button>
       <button class="action-btn feed" id="feedBtn">
@@ -276,19 +271,19 @@
 
     <h2 class="section-title">📋 היום</h2>
     <div class="card">
-      <div class="timeline" id="todayTimeline"><div class="tl-empty">עוד לא נרשם כלום היום — התחילו בעדכון מהיר למעלה 👆</div></div>
+      <div class="timeline" id="todayTimeline"></div>
     </div>
   </section>
 
   <!-- GROWTH -->
-  <section class="view active" id="view-growth">
+  <section class="view" id="view-growth">
     <h2 class="section-title">📈 גדילה</h2>
     <div class="card">
       <div class="growth-tabs">
         <button class="active" data-metric="weight">משקל</button>
         <button data-metric="height">גובה</button>
       </div>
-      <div class="chart-wrap"><canvas id="growthChart" width="718" height="325" style="display: block; box-sizing: border-box; height: 260px; width: 574px;"></canvas></div>
+      <div class="chart-wrap"><canvas id="growthChart"></canvas></div>
       <p class="pct-note">קווי האחוזונים (3, 15, 50, 85, 97) מבוססים על עקומות הגדילה של ארגון הבריאות העולמי (WHO) לבנים 0–24 חודשים, לצורך התמצאות כללית בלבד ולא כתחליף למעקב רפואי.</p>
     </div>
 
@@ -296,8 +291,8 @@
     <div class="card">
       <form class="form-grid" id="growthForm">
         <div class="two-col">
-          <div class="field"><label>תאריך</label><input type="date" id="gDate" required=""></div>
-          <div class="field"><label>גיל בימים</label><input type="text" id="gAgeShow" disabled="" placeholder="—"></div>
+          <div class="field"><label>תאריך</label><input type="date" id="gDate" required></div>
+          <div class="field"><label>גיל בימים</label><input type="text" id="gAgeShow" disabled placeholder="—"></div>
         </div>
         <div class="two-col">
           <div class="field"><label>משקל (ק״ג)</label><input type="number" step="0.01" id="gWeight" placeholder="לדוגמה 7.20"></div>
@@ -308,39 +303,7 @@
     </div>
 
     <h2 class="section-title">🗂 היסטוריה</h2>
-    <div class="card" id="growthHistory">
-    <div class="tl-item">
-      <div class="tl-icon milestone">📏</div>
-      <div class="tl-body">
-        <div class="tl-title">7.43 ק"ג</div>
-        <div class="tl-meta">10.6.2026 · <span class="who-badge">סבא דני</span></div>
-      </div>
-    </div>
-  
-    <div class="tl-item">
-      <div class="tl-icon milestone">📏</div>
-      <div class="tl-body">
-        <div class="tl-title">6.5 ק"ג</div>
-        <div class="tl-meta">10.5.2026 · <span class="who-badge">סבא דני</span></div>
-      </div>
-    </div>
-  
-    <div class="tl-item">
-      <div class="tl-icon milestone">📏</div>
-      <div class="tl-body">
-        <div class="tl-title">5.62 ק"ג</div>
-        <div class="tl-meta">10.4.2026 · <span class="who-badge">סבא דני</span></div>
-      </div>
-    </div>
-  
-    <div class="tl-item">
-      <div class="tl-icon milestone">📏</div>
-      <div class="tl-body">
-        <div class="tl-title">4.82 ק"ג</div>
-        <div class="tl-meta">10.3.2026 · <span class="who-badge">סבא דני</span></div>
-      </div>
-    </div>
-  </div>
+    <div class="card" id="growthHistory"></div>
   </section>
 
   <!-- MILESTONES -->
@@ -400,8 +363,8 @@
 </main>
 
 <nav class="tabbar">
-  <button class="" data-view="home"><span class="ic">🏠</span>בית</button>
-  <button data-view="growth" class="active"><span class="ic">📈</span>גדילה</button>
+  <button class="active" data-view="home"><span class="ic">🏠</span>בית</button>
+  <button data-view="growth"><span class="ic">📈</span>גדילה</button>
   <button data-view="milestones"><span class="ic">🌟</span>אבני דרך</button>
   <button data-view="stats"><span class="ic">📊</span>סטטיסטיקה</button>
   <button data-view="settings"><span class="ic">⚙️</span>הגדרות</button>
@@ -420,7 +383,7 @@
           <button type="button" data-val="wake">התעורר</button>
         </div>
       </div>
-      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="sleepTime" required=""></div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="sleepTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
       <button type="button" class="ghost-btn" id="sleepDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
     </form>
@@ -432,8 +395,8 @@
   <div class="modal">
     <div class="modal-head"><h3>🍼 האכלה</h3><button class="close" data-close="feedModal">×</button></div>
     <form class="form-grid" id="feedForm">
-      <div class="field"><label>כמות (מ״ל)</label><input type="number" id="feedMl" placeholder="לדוגמה 120" required=""></div>
-      <div class="field"><label>שעה</label><input type="datetime-local" id="feedTime" required=""></div>
+      <div class="field"><label>כמות (מ״ל)</label><input type="number" id="feedMl" placeholder="לדוגמה 120" required></div>
+      <div class="field"><label>שעה</label><input type="datetime-local" id="feedTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
     </form>
   </div>
@@ -456,12 +419,12 @@
         <label>מרקם (אם קקי)</label>
         <select id="poopConsistency">
           <option value="נוזלי">נוזלי</option>
-          <option value="רך" selected="">רך</option>
+          <option value="רך" selected>רך</option>
           <option value="מוצק">מוצק</option>
           <option value="קשה">קשה</option>
         </select>
       </div>
-      <div class="field"><label>שעה</label><input type="datetime-local" id="diaperTime" required=""></div>
+      <div class="field"><label>שעה</label><input type="datetime-local" id="diaperTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
     </form>
   </div>
@@ -471,11 +434,11 @@
 <div class="modal-overlay" id="milestoneModal">
   <div class="modal">
     <div class="modal-head"><h3>🌟 אבן דרך חדשה</h3><button class="close" data-close="milestoneModal">×</button></div>
-    <div class="milestone-chips" id="milestonePresets"><div class="m-chip" data-p="התהפך מהבטן לגב">התהפך מהבטן לגב</div><div class="m-chip" data-p="התהפך מהגב לבטן">התהפך מהגב לבטן</div><div class="m-chip" data-p="ישב לבד">ישב לבד</div><div class="m-chip" data-p="זחל">זחל</div><div class="m-chip" data-p="עמד לבד (פעם ראשונה)">עמד לבד (פעם ראשונה)</div><div class="m-chip" data-p="צעד ראשון">צעד ראשון</div><div class="m-chip" data-p="חיוך ראשון">חיוך ראשון</div><div class="m-chip" data-p="צחוק ראשון">צחוק ראשון</div><div class="m-chip" data-p="מילה ראשונה">מילה ראשונה</div><div class="m-chip" data-p="שן ראשונה">שן ראשונה</div></div>
+    <div class="milestone-chips" id="milestonePresets"></div>
     <form class="form-grid" id="milestoneForm">
-      <div class="field"><label>איזו אבן דרך?</label><input type="text" id="mTitle" placeholder="לדוגמה: התהפך מהבטן לגב" required=""></div>
+      <div class="field"><label>איזו אבן דרך?</label><input type="text" id="mTitle" placeholder="לדוגמה: התהפך מהבטן לגב" required></div>
       <div class="field"><label>פרטים (אופציונלי)</label><textarea id="mDetails" placeholder="לדוגמה: לכיוון ימין, בזמן משחק על השטיח"></textarea></div>
-      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mTime" required=""></div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
     </form>
   </div>
@@ -1115,6 +1078,5 @@ function init(){
 }
 init();
 </script>
-
-
-</body></html>
+</body>
+</html>
