@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0050)file:///C:/Users/dron/Downloads/ido-tracker_8.html -->
+<!-- saved from url=(0051)file:///C:/Users/dron/Downloads/ido-tracker_10.html -->
 <html lang="he" dir="rtl"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
@@ -350,7 +350,7 @@
       <button class="primary-btn" id="openMilestoneBtn" style="width:100%">+ הוספת אבן דרך חדשה</button>
     </div>
     <h2 class="section-title">היסטוריה</h2>
-    <div class="card" id="milestoneList"><div class="empty-hint">עוד לא נרשמו אבני דרך — הראשונה תמיד הכי מרגשת ✨</div></div>
+    <div class="card" id="milestoneList"></div>
   </section>
 
   <!-- STATS -->
@@ -402,7 +402,7 @@
 <nav class="tabbar">
   <button class="" data-view="home"><span class="ic">🏠</span>בית</button>
   <button data-view="growth" class="active"><span class="ic">📈</span>גדילה</button>
-  <button data-view="milestones" class=""><span class="ic">🌟</span>אבני דרך</button>
+  <button data-view="milestones"><span class="ic">🌟</span>אבני דרך</button>
   <button data-view="stats"><span class="ic">📊</span>סטטיסטיקה</button>
   <button data-view="settings"><span class="ic">⚙️</span>הגדרות</button>
 </nav>
@@ -964,13 +964,13 @@ function renderGrowthChart(){
     type:'line',
     data:{
       datasets:[
-        { label:'97', data:p97, borderColor:'#E7DCC7', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
-        { label:'85', data:p85, borderColor:'#DCC9A3', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
-        { label:'50 (חציון)', data:p50, borderColor:'#C77F3A', borderWidth:2, pointRadius:0, fill:false, tension:0.35, parsing:false },
-        { label:'15', data:p15, borderColor:'#DCC9A3', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
-        { label:'3', data:p3, borderColor:'#E7DCC7', borderWidth:1, pointRadius:0, fill:false, tension:0.35, parsing:false },
-        { label:'עידו', data: childPoints, borderColor:'#5E7D67', backgroundColor:'#5E7D67', showLine:true,
-          borderWidth:2.5, pointRadius:4, pointBackgroundColor:'#5E7D67', tension:0.2, parsing:false }
+        { label:'97', data:p97, borderColor:'#C9A15C', borderWidth:1.5, borderDash:[4,3], pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'85', data:p85, borderColor:'#B9862F', borderWidth:1.5, pointRadius:0, fill:'+2', backgroundColor:'rgba(199,127,58,0.09)', tension:0.35, parsing:false },
+        { label:'50 (חציון)', data:p50, borderColor:'#9A5A1A', borderWidth:3, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'15', data:p15, borderColor:'#B9862F', borderWidth:1.5, pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'3', data:p3, borderColor:'#C9A15C', borderWidth:1.5, borderDash:[4,3], pointRadius:0, fill:false, tension:0.35, parsing:false },
+        { label:'עידו', data: childPoints, borderColor:'#345C40', backgroundColor:'#345C40', showLine:true,
+          borderWidth:3, pointRadius:5, pointBackgroundColor:'#345C40', pointBorderColor:'#fff', pointBorderWidth:1.5, tension:0.2, parsing:false, order:0 }
       ]
     },
     options:{
