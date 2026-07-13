@@ -637,6 +637,16 @@ function fmtTime(iso){
   const d = new Date(iso);
   return d.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'});
 }
+function avgTimeOfDay(isoTimes){
+  if(!isoTimes || isoTimes.length===0) return null;
+  const totalMinutes = isoTimes.reduce((sum, iso)=>{
+    const d = new Date(iso);
+    return sum + d.getHours()*60 + d.getMinutes();
+  }, 0);
+  const avgMin = Math.round(totalMinutes / isoTimes.length);
+  const h = Math.floor(avgMin/60), m = avgMin%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
 function fmtDateTime(iso){
   const d = new Date(iso);
   return d.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'}) + ' · ' + fmtTime(iso);
@@ -827,6 +837,24 @@ function lastDiaper(){
   const d = DATA.events.filter(e=>e.type==='diaper').sort((a,b)=>new Date(b.time)-new Date(a.time));
   return d[0] || null;
 }
+function computeNightBedtimesAndWakes(cutoffDate){
+  const events = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const bedtimes = [], wakes = [];
+  for(let i=0;i<events.length;i++){
+    const ev = events[i];
+    if(new Date(ev.time) < cutoffDate) continue;
+    const prev = i>0 ? events[i-1] : null;
+    const evPeriod = ev.period || suggestPeriod(ev.time);
+    const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
+    if(ev.type==='sleep' && evPeriod==='night'){
+      if(!(prev && prev.type==='wake' && prevPeriod==='night')) bedtimes.push(ev.time);
+    }
+    if(ev.type==='wake' && evPeriod==='day'){
+      if(prev && prev.type==='sleep' && prevPeriod==='night') wakes.push(ev.time);
+    }
+  }
+  return { bedtimes, wakes };
+}
 function renderStatusStrip(){
   const strip = $('statusStrip');
   const asleep = isAsleep();
@@ -835,11 +863,19 @@ function renderStatusStrip(){
   const ld = lastDiaper();
   const lastW = [...DATA.growth].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const statusTime = lastSW ? fmtTime(lastSW.time) : '';
+
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-14);
+  const { bedtimes, wakes } = computeNightBedtimesAndWakes(cutoff);
+  const avgBedtime = avgTimeOfDay(bedtimes);
+  const avgWakeTime = avgTimeOfDay(wakes);
+
   strip.innerHTML = `
     <div class="chip"><div class="label">מצב</div><div class="val">${asleep?'😴 ישן':'🙂 ער'}</div>${statusTime?`<div class="label" style="margin-top:1px;">מ-${statusTime}</div>`:''}</div>
     <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div></div>
     <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div></div>
     <div class="chip"><div class="label">משקל אחרון</div><div class="val">${lastW?lastW.weight+' ק"ג':'—'}</div></div>
+    <div class="chip"><div class="label">🌙 שעת שינה ממוצעת</div><div class="val">${avgBedtime||'—'}</div></div>
+    <div class="chip"><div class="label">☀️ שעת קימה ממוצעת</div><div class="val">${avgWakeTime||'—'}</div></div>
   `;
 }
 
