@@ -1020,12 +1020,17 @@ function lastDiaper(){
   const d = DATA.events.filter(e=>e.type==='diaper').sort((a,b)=>new Date(b.time)-new Date(a.time));
   return d[0] || null;
 }
+const TRACKING_START = new Date('2026-07-12T00:00:00');
+function afterTrackingStart(isoTime){
+  return new Date(isoTime) >= TRACKING_START;
+}
 function computeSleepWakeAverages(cutoffDate){
   const events = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
   const daySleeps = [], nightSleeps = [], wakes = [];
   for(let i=0;i<events.length;i++){
     const ev = events[i];
     if(new Date(ev.time) < cutoffDate) continue;
+    if(!afterTrackingStart(ev.time)) continue;
     const prev = i>0 ? events[i-1] : null;
     const evPeriod = ev.period || suggestPeriod(ev.time);
     const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
@@ -1057,33 +1062,38 @@ function renderStatusStrip(){
   const avgWakeTime = avgTimeOfDay(wakes);
 
   const recentWindows = computeWindows().filter(w=> new Date(w.start) >= cutoff);
-  const sleepDayDurations = recentWindows.filter(w=>w.kind==='sleep' && w.period==='day').map(w=>w.hours);
-  const sleepNightDurations = recentWindows.filter(w=>w.kind==='sleep' && w.period==='night').map(w=>w.hours);
-  const avgSleepDayDuration = sleepDayDurations.length ? formatHM(sleepDayDurations.reduce((a,b)=>a+b,0)/sleepDayDurations.length) : null;
-  const avgSleepNightDuration = sleepNightDurations.length ? formatHM(sleepNightDurations.reduce((a,b)=>a+b,0)/sleepNightDurations.length) : null;
+  const avgDailySleepDay = avgDailyTotalHours(recentWindows, 'sleep', 'day');
+  const avgDailySleepNight = avgDailyTotalHours(recentWindows, 'sleep', 'night');
+  const avgSleepDayDuration = avgDailySleepDay!=null ? formatHM(avgDailySleepDay) : null;
+  const avgSleepNightDuration = avgDailySleepNight!=null ? formatHM(avgDailySleepNight) : null;
 
   const chipsHtml = `
-    <div class="chip"><div class="label">מצב</div><div class="val">${asleep?icon('moon')+' ישן':icon('sun')+' ער'}</div>${statusTime?`<div class="label" style="margin-top:1px;">מ-${statusTime}</div>`:''}</div>
-    <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div></div>
-    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div></div>
     <div class="chip"><div class="label">משקל אחרון</div><div class="val">${lastW?lastW.weight+' ק"ג':'—'}</div></div>
-    <div class="chip"><div class="label">${icon('sun')} שעת שינה ממוצעת ביום</div><div class="val">${avgDaySleep||'—'}</div></div>
-    <div class="chip"><div class="label">${icon('moon')} שעת שינה ממוצעת בלילה</div><div class="val">${avgNightSleep||'—'}</div></div>
-    <div class="chip"><div class="label">${icon('sun')} שעת קימה ממוצעת</div><div class="val">${avgWakeTime||'—'}</div></div>
-    <div class="chip"><div class="label">${icon('sun')} משך שינה ממוצע ביום</div><div class="val">${avgSleepDayDuration||'—'}</div></div>
     <div class="chip"><div class="label">${icon('moon')} משך שינה ממוצע בלילה</div><div class="val">${avgSleepNightDuration||'—'}</div></div>
+    <div class="chip"><div class="label">${icon('sun')} משך שינה ממוצע ביום</div><div class="val">${avgSleepDayDuration||'—'}</div></div>
+    <div class="chip"><div class="label">${icon('sun')} שעת קימה ממוצעת</div><div class="val">${avgWakeTime||'—'}</div></div>
+    <div class="chip"><div class="label">${icon('moon')} שעת שינה ממוצעת בלילה</div><div class="val">${avgNightSleep||'—'}</div></div>
+    <div class="chip"><div class="label">${icon('sun')} שעת שינה ממוצעת ביום</div><div class="val">${avgDaySleep||'—'}</div></div>
+    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div></div>
+    <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div></div>
+    <div class="chip"><div class="label">מצב</div><div class="val">${asleep?icon('moon')+' ישן':icon('sun')+' ער'}</div>${statusTime?`<div class="label" style="margin-top:1px;">מ-${statusTime}</div>`:''}</div>
   `;
   strip.innerHTML = `<div class="status-strip-track">${chipsHtml}${chipsHtml}</div>`;
+  if(!msInitialized){
+    const track = strip.querySelector('.status-strip-track');
+    const singleWidth = track.scrollWidth/2;
+    msOffset = Math.min(0, -(singleWidth - strip.clientWidth));
+    msInitialized = true;
+  }
+  msApplyOffset();
 }
 
-/* ---------- status strip marquee (auto-scroll + drag) ---------- */
-const STATUS_MARQUEE_CYCLE_S = 22;
+/* ---------- status strip (drag to scroll, no auto-motion) ---------- */
 let msOffset = 0;
+let msInitialized = false;
 let msDragging = false;
 let msDragStartX = 0;
 let msDragStartOffset = 0;
-let msLastTime = null;
-const msReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function msWrap(v, w){
   if(w<=0) return 0;
@@ -1091,25 +1101,10 @@ function msWrap(v, w){
   if(v > 0) v -= w;
   return v;
 }
-function msTick(now){
-  const strip = $('statusStrip');
-  const track = strip.querySelector('.status-strip-track');
-  if(track){
-    const singleWidth = track.scrollWidth / 2;
-    if(!msDragging && !msReduceMotion && singleWidth>0){
-      if(msLastTime==null) msLastTime = now;
-      const dt = (now - msLastTime)/1000;
-      const speed = singleWidth / STATUS_MARQUEE_CYCLE_S;
-      msOffset = msWrap(msOffset - speed*dt, singleWidth);
-    }
-    msLastTime = now;
-    track.style.transform = `translateX(${msOffset}px)`;
-  } else {
-    msLastTime = now;
-  }
-  requestAnimationFrame(msTick);
+function msApplyOffset(){
+  const track = $('statusStrip').querySelector('.status-strip-track');
+  if(track) track.style.transform = `translateX(${msOffset}px)`;
 }
-requestAnimationFrame(msTick);
 
 const statusStripEl = $('statusStrip');
 statusStripEl.addEventListener('pointerdown', (e)=>{
@@ -1125,6 +1120,7 @@ statusStripEl.addEventListener('pointermove', (e)=>{
   const track = statusStripEl.querySelector('.status-strip-track');
   const singleWidth = track ? track.scrollWidth/2 : 0;
   msOffset = msWrap(msDragStartOffset + dx, singleWidth);
+  msApplyOffset();
 });
 function msEndDrag(){
   msDragging = false;
@@ -1732,8 +1728,10 @@ function renderStats(){
   }
   const dayLabels = days.map(d=>d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'}));
 
+  const validDays = days.filter(d=>d >= TRACKING_START).length || 1;
+
   // sleep hours per day: split any sleep spanning midnight across both days
-  const sleepEvents = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const sleepEvents = [...DATA.events].filter(e=>(e.type==='sleep'||e.type==='wake') && afterTrackingStart(e.time)).sort((a,b)=>new Date(a.time)-new Date(b.time));
   const sleepByDay = days.map(()=>0);
   for(let i=0;i<sleepEvents.length-1;i++){
     if(sleepEvents[i].type==='sleep' && sleepEvents[i+1].type==='wake'){
@@ -1747,16 +1745,16 @@ function renderStats(){
   }
 
   const feedByDay = days.map(d=>{
-    return DATA.events.filter(e=>e.type==='feed' && new Date(e.time).toDateString()===d.toDateString())
+    return DATA.events.filter(e=>e.type==='feed' && afterTrackingStart(e.time) && new Date(e.time).toDateString()===d.toDateString())
       .reduce((s,e)=>s+(e.ml||0),0);
   });
   const diaperByDay = days.map(d=>{
-    return DATA.events.filter(e=>e.type==='diaper' && new Date(e.time).toDateString()===d.toDateString()).length;
+    return DATA.events.filter(e=>e.type==='diaper' && afterTrackingStart(e.time) && new Date(e.time).toDateString()===d.toDateString()).length;
   });
 
-  const avgSleep = (sleepByDay.reduce((a,b)=>a+b,0)/7).toFixed(1);
-  const avgFeed = Math.round(feedByDay.reduce((a,b)=>a+b,0)/7);
-  const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/7).toFixed(1);
+  const avgSleep = (sleepByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
+  const avgFeed = Math.round(feedByDay.reduce((a,b)=>a+b,0)/validDays);
+  const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
   const totalMilestones = DATA.milestones.length;
 
   $('statCards').innerHTML = `
@@ -1789,7 +1787,7 @@ function renderStats(){
 
 /* ---------- sleep/awake windows ---------- */
 function computeWindows(){
-  const events = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const events = [...DATA.events].filter(e=>(e.type==='sleep'||e.type==='wake') && afterTrackingStart(e.time)).sort((a,b)=>new Date(a.time)-new Date(b.time));
   const windows = [];
   for(let i=0;i<events.length-1;i++){
     const cur = events[i], next = events[i+1];
@@ -1814,6 +1812,22 @@ document.querySelectorAll('#windowRangeSeg button').forEach(b=>{
 function formatHM(hours){
   const h = Math.floor(hours), m = Math.round((hours-h)*60);
   return `${h}:${String(m).padStart(2,'0')}`;
+}
+function dayGroupKey(time, period){
+  const d = new Date(time);
+  if(period==='night' && d.getHours() < 12){ d.setDate(d.getDate()-1); }
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function avgDailyTotalHours(windows, kind, period){
+  const totalsByDay = {};
+  windows.filter(w=>w.kind===kind && w.period===period).forEach(w=>{
+    const key = dayGroupKey(w.start, period);
+    totalsByDay[key] = (totalsByDay[key]||0) + w.hours;
+  });
+  const trackingStartKey = TRACKING_START.getFullYear()+'-'+String(TRACKING_START.getMonth()+1).padStart(2,'0')+'-'+String(TRACKING_START.getDate()).padStart(2,'0');
+  const dailyTotals = Object.entries(totalsByDay).filter(([key])=>key >= trackingStartKey).map(([,hours])=>hours);
+  if(dailyTotals.length===0) return null;
+  return dailyTotals.reduce((a,b)=>a+b,0)/dailyTotals.length;
 }
 function renderWindowStats(rangeDays){
   const windows = computeWindows();
