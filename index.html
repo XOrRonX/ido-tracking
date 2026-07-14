@@ -234,6 +234,15 @@
     font-size:16px; flex-shrink:0;
   }
 
+  .gallery-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px;}
+  .gallery-item{position:relative; aspect-ratio:1; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:var(--card); box-shadow:var(--shadow);}
+  .gallery-item img{width:100%; height:100%; object-fit:cover; cursor:pointer; display:block;}
+  .gallery-remove{
+    position:absolute; top:6px; left:6px; width:24px; height:24px; border-radius:50%;
+    background:var(--rose-deep); color:#fff; border:2px solid var(--cream); font-size:14px; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+
   .growth-tabs{display:flex; gap:8px; margin-bottom:10px;}
   .growth-tabs button{
     flex:1; padding:9px; border-radius:12px; border:1px solid var(--line); background:var(--card); font-size:13px; cursor:pointer; color:var(--ink);
@@ -448,6 +457,16 @@
     <div class="card" id="milestoneList"></div>
   </section>
 
+  <!-- GALLERY -->
+  <section class="view" id="view-gallery">
+    <h2 class="section-title"><span data-icon="images"></span> גלריה</h2>
+    <div class="card">
+      <button type="button" class="primary-btn" id="galleryTriggerBtn" style="width:100%;"><span data-icon="camera"></span> העלאת תמונות</button>
+      <input type="file" id="galleryInput" accept="image/*" multiple style="display:none;">
+    </div>
+    <div class="gallery-grid" id="galleryGrid"></div>
+  </section>
+
   <!-- STATS -->
   <section class="view" id="view-stats">
     <h2 class="section-title"><span data-icon="history"></span> חלונות שינה וערות</h2>
@@ -528,6 +547,7 @@
   <button class="active" data-view="home"><span class="ic" data-icon="home"></span>בית</button>
   <button data-view="growth"><span class="ic" data-icon="trendUp"></span>גדילה</button>
   <button data-view="milestones"><span class="ic" data-icon="flag"></span>אבני דרך</button>
+  <button data-view="gallery"><span class="ic" data-icon="images"></span>גלריה</button>
   <button data-view="stats"><span class="ic" data-icon="barChart"></span>סטטיסטיקה</button>
   <button data-view="settings"><span class="ic" data-icon="gear"></span>הגדרות</button>
 </nav>
@@ -671,7 +691,7 @@ const WHO_HEIGHT = {
 const MONTHS_KEYS = [0,1,2,3,4,5,6,9,12,15,18,21,24];
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [] };
+let DATA = { events: [], growth: [], milestones: [], gallery: [] };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -719,7 +739,8 @@ const ICONS = {
   sparkle: '<path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M18.5 5.5l-2.8 2.8M8.3 15.7l-2.8 2.8"/>',
   flag: '<path d="M6 21V4"/><path d="M6 4h13l-3.2 4.2L19 12.4H6"/>',
   zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
-  list: '<path d="M8 4h8a1 1 0 0 1 1 1v15l-5-3-5 3V5a1 1 0 0 1 1-1Z"/>'
+  list: '<path d="M8 4h8a1 1 0 0 1 1 1v15l-5-3-5 3V5a1 1 0 0 1 1-1Z"/>',
+  images: '<rect x="3" y="3" width="13" height="13" rx="2"/><path d="M7.5 20.5h11a2 2 0 0 0 2-2v-11"/><path d="M6 12.5 9 9l3 3.5 2-2 3.5 4"/>'
 };
 function icon(name, cls){
   return `<svg class="ico${cls?(' '+cls):''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -860,7 +881,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[] };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], gallery: d.gallery||[] };
       refreshAll();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
@@ -911,6 +932,7 @@ function switchView(name){
   if(name==='growth') renderGrowthChart();
   if(name==='stats') renderStats();
   if(name==='milestones') renderMilestoneList();
+  if(name==='gallery') renderGallery();
 }
 document.querySelectorAll('nav.tabbar button').forEach(b=>{
   b.addEventListener('click', ()=>switchView(b.dataset.view));
@@ -1496,6 +1518,67 @@ function renderGrowthHistory(){
     el.addEventListener('click', ()=>openGrowthEditModal(el.dataset.editId));
   });
 }
+
+/* ---------- gallery ---------- */
+$('galleryTriggerBtn').addEventListener('click', ()=>$('galleryInput').click());
+$('galleryInput').addEventListener('change', async (e)=>{
+  const files = [...e.target.files];
+  if(files.length===0) return;
+  e.target.value = '';
+  toast(files.length>1 ? 'מעלה תמונות…' : 'מעלה תמונה…');
+  for(const file of files){
+    try{
+      const resized = await resizeImageFile(file);
+      const id = uid();
+      await db.collection('ido_gallery_photos').doc(id).set({ data: resized });
+      photoCache[id] = resized;
+      DATA.gallery.push({ id, time: new Date().toISOString(), by: ME });
+    }catch(err){
+      console.error(err);
+      toast('שגיאה בהעלאת תמונה');
+    }
+  }
+  await saveData();
+  renderGallery();
+  toast('התמונות נשמרו בגלריה');
+});
+function renderGallery(){
+  const grid = $('galleryGrid');
+  const items = [...DATA.gallery].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(items.length===0){ grid.innerHTML = '<div class="empty-hint">עוד אין תמונות בגלריה</div>'; return; }
+  grid.innerHTML = items.map(g=>`
+    <div class="gallery-item">
+      <img id="gal-${g.id}" alt="">
+      <button type="button" class="gallery-remove" data-remove-id="${g.id}">×</button>
+    </div>
+  `).join('');
+  document.querySelectorAll('.gallery-remove').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.dataset.removeId;
+      if(!confirm('למחוק את התמונה?')) return;
+      DATA.gallery = DATA.gallery.filter(g=>g.id!==id);
+      await saveData();
+      try{ await db.collection('ido_gallery_photos').doc(id).delete(); }catch(err){}
+      delete photoCache[id];
+      renderGallery();
+    });
+  });
+  items.forEach(async g=>{
+    let src = photoCache[g.id];
+    if(!src){
+      try{
+        const doc = await db.collection('ido_gallery_photos').doc(g.id).get();
+        if(doc.exists) src = doc.data().data;
+      }catch(err){ console.error(err); }
+      if(src) photoCache[g.id] = src;
+    }
+    const imgEl = document.getElementById('gal-'+g.id);
+    if(imgEl && src){
+      imgEl.src = src;
+      imgEl.addEventListener('click', ()=>openPhotoLightbox(src));
+    }
+  });
+}
 async function openGrowthEditModal(entryId){
   const entry = DATA.growth.find(g=>g.id===entryId);
   if(!entry) return;
@@ -1888,6 +1971,7 @@ function refreshAll(){
   if(document.getElementById('view-growth').classList.contains('active')) renderGrowthChart();
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
   if(document.getElementById('view-milestones').classList.contains('active')) renderMilestoneList();
+  if(document.getElementById('view-gallery').classList.contains('active')) renderGallery();
 }
 
 /* ---------- init ---------- */
