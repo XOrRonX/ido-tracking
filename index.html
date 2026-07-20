@@ -152,6 +152,8 @@
   .action-btn.feed{border-color:#eddcc4;}
   .action-btn.diaper{border-color:#efd7d3;}
   .action-btn.milestone{border-color:#cfe0e9;}
+  .action-btn.supplement{border-color:#e5dcc4; flex-direction:row; align-items:center; justify-content:center; gap:10px; padding:14px;}
+  .action-btn.supplement .title{margin-inline-start:2px;}
 
   .feed-row{width:100%;}
 
@@ -173,6 +175,7 @@
   .tl-icon.pee{background:#EAF3FA;}
   .tl-icon.poop{background:#F7E5E2;}
   .tl-icon.milestone{background:#E7EEF3;}
+  .tl-icon.supplement{background:#F0E4CE;}
   .tl-body{flex:1; min-width:0;}
   .tl-title{font-size:14px; font-weight:500;}
   .tl-meta{font-size:12px; color:var(--ink-soft); margin-top:2px;}
@@ -304,6 +307,7 @@
   html[data-theme="dark"] .tl-icon.pee{background:#1D2C38;}
   html[data-theme="dark"] .tl-icon.poop{background:#3A2420;}
   html[data-theme="dark"] .tl-icon.milestone{background:#1E2A31;}
+  html[data-theme="dark"] .tl-icon.supplement{background:#332B1B;}
   html[data-theme="dark"] .m-badge{background:#1E2A31;}
   html[data-theme="dark"] .who-badge{background:#20301F;}
   html[data-theme="dark"] .window-row-meta-badge.day{background:#3A2F17; color:#E8C77E;}
@@ -394,26 +398,11 @@
         <span class="title">אבן דרך</span>
         <span class="sub">משהו חדש שקרה</span>
       </button>
-    </div>
-
-    <h2 class="section-title"><span data-icon="pill"></span> תוספים</h2>
-    <div class="day-nav">
-      <button type="button" class="day-nav-btn" id="supplementsPrevDayBtn">‹</button>
-      <input type="date" id="supplementsDateInput">
-      <button type="button" class="day-nav-btn" id="supplementsNextDayBtn">›</button>
-      <button type="button" class="ghost-btn" id="supplementsTodayJumpBtn">היום</button>
-    </div>
-    <div class="card">
-      <label class="supplement-row">
-        <span class="m-badge"><span data-icon="pill"></span></span>
-        <span style="flex:1;">ברזל</span>
-        <input type="checkbox" id="ironCheck">
-      </label>
-      <label class="supplement-row">
-        <span class="m-badge"><span data-icon="pill"></span></span>
-        <span style="flex:1;">ויטמין D</span>
-        <input type="checkbox" id="vitaminDCheck">
-      </label>
+      <button class="action-btn supplement" id="supplementsQuickBtn" style="grid-column:1 / -1;">
+        <span class="icon" data-icon="pill"></span>
+        <span class="title">תוספים</span>
+        <span class="sub">ברזל / ויטמין D</span>
+      </button>
     </div>
 
     <h2 class="section-title" id="timelineTitle"><span data-icon="calendar"></span> היום</h2>
@@ -653,6 +642,31 @@
   </div>
 </div>
 
+<!-- SUPPLEMENTS MODAL -->
+<div class="modal-overlay" id="supplementsModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="supplementsModalTitle"><span data-icon="pill"></span> תוספים</h3><button class="close" data-close="supplementsModal">×</button></div>
+    <form class="form-grid" id="supplementsForm">
+      <input type="hidden" id="supplementsEditId" value="">
+      <div class="card" style="box-shadow:none; border-color:var(--line);">
+        <label class="supplement-row">
+          <span class="m-badge"><span data-icon="pill"></span></span>
+          <span style="flex:1;">ברזל</span>
+          <input type="checkbox" id="ironCheck">
+        </label>
+        <label class="supplement-row">
+          <span class="m-badge"><span data-icon="pill"></span></span>
+          <span style="flex:1;">ויטמין D</span>
+          <input type="checkbox" id="vitaminDCheck">
+        </label>
+      </div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="supplementsTime" required></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+      <button type="button" class="ghost-btn" id="supplementsDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
+    </form>
+  </div>
+</div>
+
 <!-- GROWTH EDIT MODAL -->
 <div class="modal-overlay" id="growthEditModal">
   <div class="modal">
@@ -738,7 +752,7 @@ function growthPercentiles(entry){
 }
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [], supplements: {} };
+let DATA = { events: [], growth: [], milestones: [] };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -929,7 +943,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], supplements: d.supplements||{} };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[] };
       refreshAll();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
@@ -1190,40 +1204,55 @@ function refreshSleepBtn(){
   $('sleepSub').textContent = asleep ? 'לחצו כשעידו קם' : 'לחצו כשעידו נרדם';
 }
 
-/* ---------- daily supplements ---------- */
-function todayKey(){ return new Date().toISOString().slice(0,10); }
-let supplementsDate = todayKey();
-function renderSupplements(){
-  const rec = DATA.supplements[supplementsDate] || {};
-  $('ironCheck').checked = !!rec.iron;
-  $('vitaminDCheck').checked = !!rec.vitaminD;
+/* ---------- supplements ---------- */
+function openSupplementsModal(editId){
+  if(editId){
+    const ev = DATA.events.find(e=>e.id===editId);
+    if(!ev) return;
+    $('supplementsModalTitle').innerHTML = icon('pill')+' עריכת תוספים';
+    $('supplementsEditId').value = editId;
+    $('ironCheck').checked = !!ev.iron;
+    $('vitaminDCheck').checked = !!ev.vitaminD;
+    const d = new Date(ev.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    $('supplementsTime').value = d.toISOString().slice(0,16);
+    $('supplementsDeleteBtn').style.display = 'block';
+  } else {
+    $('supplementsModalTitle').innerHTML = icon('pill')+' תוספים';
+    $('supplementsEditId').value = '';
+    $('ironCheck').checked = false;
+    $('vitaminDCheck').checked = false;
+    $('supplementsTime').value = nowLocalInput();
+    $('supplementsDeleteBtn').style.display = 'none';
+  }
+  openModal('supplementsModal');
 }
-async function setSupplement(key, value){
-  const rec = { ...(DATA.supplements[supplementsDate] || {}) };
-  rec[key] = value;
-  DATA.supplements[supplementsDate] = rec;
+$('supplementsForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const editId = $('supplementsEditId').value;
+  const iron = $('ironCheck').checked;
+  const vitaminD = $('vitaminDCheck').checked;
+  if(!iron && !vitaminD){ toast('צריך לסמן לפחות תוסף אחד'); return; }
+  const time = new Date($('supplementsTime').value).toISOString();
+  if(editId){
+    const ev = DATA.events.find(x=>x.id===editId);
+    if(ev){ ev.iron = iron; ev.vitaminD = vitaminD; ev.time = time; ev.editedBy = ME||''; }
+  } else {
+    DATA.events.push({ id: uid(), type:'supplement', iron, vitaminD, time, by: ME||'' });
+  }
   await saveData();
-}
-$('ironCheck').addEventListener('change', (e)=>setSupplement('iron', e.target.checked));
-$('vitaminDCheck').addEventListener('change', (e)=>setSupplement('vitaminD', e.target.checked));
-$('supplementsDateInput').addEventListener('change', ()=>{
-  supplementsDate = $('supplementsDateInput').value || todayKey();
-  renderSupplements();
+  closeModal('supplementsModal');
+  toast(editId ? 'התוספים עודכנו' : 'התוספים נשמרו');
+  refreshAll();
 });
-$('supplementsPrevDayBtn').addEventListener('click', ()=>{
-  supplementsDate = shiftDate(supplementsDate, -1);
-  $('supplementsDateInput').value = supplementsDate;
-  renderSupplements();
-});
-$('supplementsNextDayBtn').addEventListener('click', ()=>{
-  supplementsDate = shiftDate(supplementsDate, 1);
-  $('supplementsDateInput').value = supplementsDate;
-  renderSupplements();
-});
-$('supplementsTodayJumpBtn').addEventListener('click', ()=>{
-  supplementsDate = todayKey();
-  $('supplementsDateInput').value = supplementsDate;
-  renderSupplements();
+$('supplementsDeleteBtn').addEventListener('click', async ()=>{
+  const editId = $('supplementsEditId').value;
+  if(!editId) return;
+  if(!confirm('למחוק את הרשומה הזו?')) return;
+  DATA.events = DATA.events.filter(x=>x.id!==editId);
+  await saveData();
+  closeModal('supplementsModal');
+  toast('הרשומה נמחקה');
+  refreshAll();
 });
 $('sleepBtn').addEventListener('click', ()=>{
   const asleep = isAsleep();
@@ -1422,6 +1451,7 @@ function renderMilestonePresets(){
   });
 }
 $('milestoneQuickBtn').addEventListener('click', ()=>openMilestoneModal());
+$('supplementsQuickBtn').addEventListener('click', ()=>openSupplementsModal());
 $('openMilestoneBtn').addEventListener('click', ()=>openMilestoneModal());
 function openMilestoneModal(){
   $('mTime').value = nowLocalInput();
@@ -1476,6 +1506,7 @@ function timelineIconClass(ev){
   if(ev.type==='wake') return 'wake';
   if(ev.type==='feed') return 'feed';
   if(ev.type==='diaper') return ev.kind==='pee' ? 'pee' : 'poop';
+  if(ev.type==='supplement') return 'supplement';
   return 'milestone';
 }
 function timelineIcon(ev){
@@ -1483,6 +1514,7 @@ function timelineIcon(ev){
   if(ev.type==='wake') return icon('sun');
   if(ev.type==='feed') return icon('bottle');
   if(ev.type==='diaper') return ev.kind==='pee' ? icon('droplet') : (ev.kind==='both' ? icon('diaper') : icon('poop'));
+  if(ev.type==='supplement') return icon('pill');
   return icon('star');
 }
 function timelineTitle(ev){
@@ -1494,7 +1526,14 @@ function timelineTitle(ev){
     if(ev.kind==='poop') return `קקי${ev.consistency?' — '+ev.consistency:''}`;
     return `פיפי + קקי${ev.consistency?' — '+ev.consistency:''}`;
   }
+  if(ev.type==='supplement') return 'תוספים';
   return ev.title;
+}
+function supplementDetailText(ev){
+  const parts = [];
+  if(ev.iron) parts.push('ברזל');
+  if(ev.vitaminD) parts.push('ויטמין D');
+  return parts.join(', ');
 }
 function updateTimelineTitle(){
   const todayStr = new Date().toISOString().slice(0,10);
@@ -1512,12 +1551,13 @@ function renderTodayTimeline(){
   const all = [...dayEvents, ...dayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
   if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום ביום הזה</div>'; return; }
   $('todayTimeline').innerHTML = all.map(ev=>{
-    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper');
+    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement');
     return `
     <div class="tl-item${isEditable?' editable':''}" ${isEditable?`data-edit-id="${ev.id}" data-edit-type="${ev.type}"`:''}>
       <div class="tl-icon ${timelineIconClass(ev)}">${timelineIcon(ev)}</div>
       <div class="tl-body">
         <div class="tl-title">${timelineTitle(ev)}</div>
+        ${ev.type==='supplement'?`<div class="tl-meta">${supplementDetailText(ev)}</div>`:''}
         <div class="tl-meta">${fmtTime(ev.time)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
       </div>
       ${isEditable?`<div class="tl-edit-hint">עריכה ${icon('pencil')}</div>`:''}
@@ -1530,6 +1570,7 @@ function renderTodayTimeline(){
       if(type==='sleep'||type==='wake') openSleepModal(id);
       else if(type==='feed') openFeedModal(id);
       else if(type==='diaper') openDiaperModal(id);
+      else if(type==='supplement') openSupplementsModal(id);
     });
   });
 }
@@ -2041,7 +2082,6 @@ function refreshAll(){
   refreshHeader();
   renderStatusStrip();
   refreshSleepBtn();
-  renderSupplements();
   renderTodayTimeline();
   renderGrowthHistory();
   if(document.getElementById('view-growth').classList.contains('active')) renderGrowthChart();
@@ -2058,7 +2098,6 @@ function init(){
   $('gDate').value = new Date().toISOString().slice(0,10);
   $('timelineDate').value = timelineDate;
   $('windowsListDateInput').value = windowsListDate;
-  $('supplementsDateInput').value = supplementsDate;
   renderMilestonePresets();
   initRealtimeSync();
   if(!ME){ toast('ברוכים הבאים! ספרו לנו מי אתם בהגדרות'); }
