@@ -233,6 +233,8 @@
 
   .milestone-log-item{display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--line);}
   .milestone-log-item:last-child{border-bottom:none;}
+  .milestone-log-item.editable{cursor:pointer;}
+  .milestone-log-item.editable:active{background:var(--cream-2);}
   .m-badge{
     width:34px;height:34px;border-radius:10px; background:#E7EEF3; display:flex;align-items:center;justify-content:center;
     font-size:16px; flex-shrink:0;
@@ -631,13 +633,15 @@
 <!-- MILESTONE MODAL -->
 <div class="modal-overlay" id="milestoneModal">
   <div class="modal">
-    <div class="modal-head"><h3><span data-icon="star"></span> אבן דרך חדשה</h3><button class="close" data-close="milestoneModal">×</button></div>
+    <div class="modal-head"><h3 id="milestoneModalTitle"><span data-icon="star"></span> אבן דרך חדשה</h3><button class="close" data-close="milestoneModal">×</button></div>
     <div class="milestone-chips" id="milestonePresets"></div>
     <form class="form-grid" id="milestoneForm">
+      <input type="hidden" id="mEditId" value="">
       <div class="field"><label>איזו אבן דרך?</label><input type="text" id="mTitle" placeholder="לדוגמה: התהפך מהבטן לגב" required></div>
       <div class="field"><label>פרטים (אופציונלי)</label><textarea id="mDetails" placeholder="לדוגמה: לכיוון ימין, בזמן משחק על השטיח"></textarea></div>
       <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
+      <button type="button" class="ghost-btn" id="mDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
     </form>
   </div>
 </div>
@@ -1453,22 +1457,53 @@ function renderMilestonePresets(){
 $('milestoneQuickBtn').addEventListener('click', ()=>openMilestoneModal());
 $('supplementsQuickBtn').addEventListener('click', ()=>openSupplementsModal());
 $('openMilestoneBtn').addEventListener('click', ()=>openMilestoneModal());
-function openMilestoneModal(){
-  $('mTime').value = nowLocalInput();
-  $('mTitle').value = '';
-  $('mDetails').value = '';
+function openMilestoneModal(editId){
   document.querySelectorAll('#milestonePresets .m-chip').forEach(x=>x.classList.remove('selected'));
+  if(editId){
+    const m = DATA.milestones.find(x=>x.id===editId);
+    if(!m) return;
+    $('milestoneModalTitle').innerHTML = icon('star')+' עריכת אבן דרך';
+    $('mEditId').value = editId;
+    $('mTitle').value = m.title;
+    $('mDetails').value = m.details||'';
+    const d = new Date(m.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    $('mTime').value = d.toISOString().slice(0,16);
+    $('mDeleteBtn').style.display = 'block';
+  } else {
+    $('milestoneModalTitle').innerHTML = icon('star')+' אבן דרך חדשה';
+    $('mEditId').value = '';
+    $('mTime').value = nowLocalInput();
+    $('mTitle').value = '';
+    $('mDetails').value = '';
+    $('mDeleteBtn').style.display = 'none';
+  }
   openModal('milestoneModal');
 }
 $('milestoneForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
-  DATA.milestones.push({
-    id:uid(), title:$('mTitle').value.trim(), details:$('mDetails').value.trim(),
-    time:new Date($('mTime').value).toISOString(), by:ME||''
-  });
+  const editId = $('mEditId').value;
+  const title = $('mTitle').value.trim();
+  const details = $('mDetails').value.trim();
+  const time = new Date($('mTime').value).toISOString();
+  if(editId){
+    const m = DATA.milestones.find(x=>x.id===editId);
+    if(m){ m.title = title; m.details = details; m.time = time; m.editedBy = ME||''; }
+  } else {
+    DATA.milestones.push({ id:uid(), title, details, time, by:ME||'' });
+  }
   await saveData();
   closeModal('milestoneModal');
-  toast('אבן דרך נשמרה');
+  toast(editId ? 'אבן הדרך עודכנה' : 'אבן דרך נשמרה');
+  refreshAll();
+});
+$('mDeleteBtn').addEventListener('click', async ()=>{
+  const editId = $('mEditId').value;
+  if(!editId) return;
+  if(!confirm('למחוק את אבן הדרך הזו?')) return;
+  DATA.milestones = DATA.milestones.filter(x=>x.id!==editId);
+  await saveData();
+  closeModal('milestoneModal');
+  toast('אבן הדרך נמחקה');
   refreshAll();
 });
 function milestoneIcon(title){
@@ -1489,15 +1524,19 @@ function renderMilestoneList(){
   $('milestoneList').innerHTML = list.map(m=>{
     const age = SETTINGS.birth ? ageStringFrom(SETTINGS.birth, m.time) : null;
     return `
-    <div class="milestone-log-item">
+    <div class="milestone-log-item editable" data-edit-id="${m.id}">
       <div class="m-badge">${milestoneIcon(m.title)}</div>
       <div class="tl-body">
         <div class="tl-title">${m.title}</div>
         ${m.details?`<div class="tl-meta">${m.details}</div>`:''}
         <div class="tl-meta">${fmtDateTime(m.time)}${age?` · ${age}`:''}${m.by?` · <span class="who-badge">${m.by}</span>`:''}</div>
       </div>
+      <div class="tl-edit-hint">עריכה ${icon('pencil')}</div>
     </div>
   `;}).join('');
+  document.querySelectorAll('#milestoneList .milestone-log-item.editable').forEach(el=>{
+    el.addEventListener('click', ()=>openMilestoneModal(el.dataset.editId));
+  });
 }
 
 /* ---------- today timeline ---------- */
@@ -1551,7 +1590,7 @@ function renderTodayTimeline(){
   const all = [...dayEvents, ...dayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
   if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום ביום הזה</div>'; return; }
   $('todayTimeline').innerHTML = all.map(ev=>{
-    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement');
+    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement'||ev.type==='milestone');
     return `
     <div class="tl-item${isEditable?' editable':''}" ${isEditable?`data-edit-id="${ev.id}" data-edit-type="${ev.type}"`:''}>
       <div class="tl-icon ${timelineIconClass(ev)}">${timelineIcon(ev)}</div>
@@ -1571,6 +1610,7 @@ function renderTodayTimeline(){
       else if(type==='feed') openFeedModal(id);
       else if(type==='diaper') openDiaperModal(id);
       else if(type==='supplement') openSupplementsModal(id);
+      else if(type==='milestone') openMilestoneModal(id);
     });
   });
 }
