@@ -54,8 +54,8 @@ let growthMetric = 'weight';
 let diaperTypeVal = 'pee';
 let sleepPeriodVal = 'day';
 let windowStatsRange = 7;
-let timelineDate = nightWindowDateFor(new Date());
-let windowsListDate = nightWindowDateFor(new Date());
+let timelineDate = todayLocalStr();
+let windowsListDate = todayLocalStr();
 let pendingGrowthPhoto = null;
 let photoCache = {};
 let gePhotoState = { changed:false, data:null };
@@ -196,6 +196,10 @@ function nightWindowDateFor(iso){
   if(d.getHours() >= 19) d.setDate(d.getDate()+1);
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+function todayLocalStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function crossDayNote(iso, windowLabel){
   const d = new Date(iso);
   const actualDate = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -314,7 +318,7 @@ function shiftDate(dateStr, days){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 $('timelineDate').addEventListener('change', ()=>{
-  timelineDate = $('timelineDate').value || nightWindowDateFor(new Date());
+  timelineDate = $('timelineDate').value || todayLocalStr();
   renderTodayTimeline();
 });
 $('prevDayBtn').addEventListener('click', ()=>{
@@ -328,7 +332,7 @@ $('nextDayBtn').addEventListener('click', ()=>{
   renderTodayTimeline();
 });
 $('todayJumpBtn').addEventListener('click', ()=>{
-  timelineDate = nightWindowDateFor(new Date());
+  timelineDate = todayLocalStr();
   $('timelineDate').value = timelineDate;
   renderTodayTimeline();
 });
@@ -877,7 +881,7 @@ function supplementDetailText(ev){
   return parts.join(', ');
 }
 function updateTimelineTitle(){
-  const todayStr = nightWindowDateFor(new Date());
+  const todayStr = todayLocalStr();
   if(timelineDate === todayStr){
     $('timelineTitle').innerHTML = icon('calendar')+' היום';
   } else {
@@ -1252,7 +1256,7 @@ function avgDailyTotalHours(windows, kind, period){
 }
 function renderWindowStats(rangeDays){
   const windows = computeWindows();
-  const todayLabel = nightWindowDateFor(new Date());
+  const todayLabel = todayLocalStr();
   const cutoff = new Date(todayLabel+'T19:00:00'); cutoff.setDate(cutoff.getDate()-rangeDays);
   const inRange = windows.filter(w=> new Date(w.start) >= cutoff);
   const buckets = { awake_day:[], awake_night:[], sleep_day:[], sleep_night:[] };
@@ -1280,7 +1284,7 @@ function renderWindowsDayDetail(){
   renderWindowsList(dayWindows, windowsListDate);
 }
 $('windowsListDateInput').addEventListener('change', ()=>{
-  windowsListDate = $('windowsListDateInput').value || nightWindowDateFor(new Date());
+  windowsListDate = $('windowsListDateInput').value || todayLocalStr();
   renderWindowsDayDetail();
 });
 $('windowsPrevDayBtn').addEventListener('click', ()=>{
@@ -1294,12 +1298,12 @@ $('windowsNextDayBtn').addEventListener('click', ()=>{
   renderWindowsDayDetail();
 });
 $('windowsTodayJumpBtn').addEventListener('click', ()=>{
-  windowsListDate = nightWindowDateFor(new Date());
+  windowsListDate = todayLocalStr();
   $('windowsListDateInput').value = windowsListDate;
   renderWindowsDayDetail();
 });
 function renderWindowTrendCharts(inRange, rangeDays){
-  const todayLabel = nightWindowDateFor(new Date());
+  const todayLabel = todayLocalStr();
   const days = [];
   for(let i=rangeDays-1;i>=0;i--){
     const d = new Date(todayLabel+'T12:00:00'); d.setDate(d.getDate()-i);
@@ -1341,7 +1345,7 @@ function renderWindowTrendCharts(inRange, rangeDays){
 function renderWindowsList(windows, windowLabel){
   if(windows.length===0){ $('windowsList').innerHTML = '<div class="empty-hint">אין חלונות שהושלמו בטווח הזה</div>'; return; }
   const sorted = [...windows].sort((a,b)=>new Date(b.start)-new Date(a.start));
-  const todayStr = nightWindowDateFor(new Date());
+  const todayStr = todayLocalStr();
   const d = new Date(windowLabel+'T12:00:00');
   let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
   if(windowLabel===todayStr) label = 'היום · ' + label;
