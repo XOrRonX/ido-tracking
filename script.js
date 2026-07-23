@@ -54,8 +54,8 @@ let growthMetric = 'weight';
 let diaperTypeVal = 'pee';
 let sleepPeriodVal = 'day';
 let windowStatsRange = 7;
-let timelineDate = new Date().toISOString().slice(0,10);
-let windowsListDate = new Date().toISOString().slice(0,10);
+let timelineDate = nightWindowDateFor(new Date());
+let windowsListDate = nightWindowDateFor(new Date());
 let pendingGrowthPhoto = null;
 let photoCache = {};
 let gePhotoState = { changed:false, data:null };
@@ -191,6 +191,17 @@ function isOnDate(iso, dateStr){
   const localStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   return localStr === dateStr;
 }
+function nightWindowDateFor(iso){
+  const d = new Date(iso);
+  if(d.getHours() >= 19) d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function crossDayNote(iso, windowLabel){
+  const d = new Date(iso);
+  const actualDate = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(actualDate === windowLabel) return '';
+  return ' (' + d.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'}) + ')';
+}
 function splitIntoDayPortions(startISO, endISO){
   const start = new Date(startISO), end = new Date(endISO);
   const portions = [];
@@ -303,7 +314,7 @@ function shiftDate(dateStr, days){
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 $('timelineDate').addEventListener('change', ()=>{
-  timelineDate = $('timelineDate').value || new Date().toISOString().slice(0,10);
+  timelineDate = $('timelineDate').value || nightWindowDateFor(new Date());
   renderTodayTimeline();
 });
 $('prevDayBtn').addEventListener('click', ()=>{
@@ -317,7 +328,7 @@ $('nextDayBtn').addEventListener('click', ()=>{
   renderTodayTimeline();
 });
 $('todayJumpBtn').addEventListener('click', ()=>{
-  timelineDate = new Date().toISOString().slice(0,10);
+  timelineDate = nightWindowDateFor(new Date());
   $('timelineDate').value = timelineDate;
   renderTodayTimeline();
 });
@@ -866,7 +877,7 @@ function supplementDetailText(ev){
   return parts.join(', ');
 }
 function updateTimelineTitle(){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = nightWindowDateFor(new Date());
   if(timelineDate === todayStr){
     $('timelineTitle').innerHTML = icon('calendar')+' היום';
   } else {
@@ -876,10 +887,10 @@ function updateTimelineTitle(){
 }
 function renderTodayTimeline(){
   updateTimelineTitle();
-  const dayEvents = DATA.events.filter(e=>isOnDate(e.time, timelineDate)).map(e=>({...e, _kind:'event'}));
-  const dayMilestones = DATA.milestones.filter(m=>isOnDate(m.time, timelineDate)).map(m=>({...m, type:'milestone', _kind:'milestone'}));
+  const dayEvents = DATA.events.filter(e=>nightWindowDateFor(e.time)===timelineDate).map(e=>({...e, _kind:'event'}));
+  const dayMilestones = DATA.milestones.filter(m=>nightWindowDateFor(m.time)===timelineDate).map(m=>({...m, type:'milestone', _kind:'milestone'}));
   const all = [...dayEvents, ...dayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
-  if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום ביום הזה</div>'; return; }
+  if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום בטווח הזה</div>'; return; }
   $('todayTimeline').innerHTML = all.map(ev=>{
     const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement'||ev.type==='milestone');
     return `
@@ -888,7 +899,7 @@ function renderTodayTimeline(){
       <div class="tl-body">
         <div class="tl-title">${timelineTitle(ev)}</div>
         ${ev.type==='supplement'?`<div class="tl-meta">${supplementDetailText(ev)}</div>`:''}
-        <div class="tl-meta">${fmtTime(ev.time)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
+        <div class="tl-meta">${fmtTime(ev.time)}${crossDayNote(ev.time, timelineDate)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
       </div>
       ${isEditable?`<div class="tl-edit-hint">עריכה ${icon('pencil')}</div>`:''}
     </div>
@@ -1241,7 +1252,8 @@ function avgDailyTotalHours(windows, kind, period){
 }
 function renderWindowStats(rangeDays){
   const windows = computeWindows();
-  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-rangeDays); cutoff.setHours(0,0,0,0);
+  const todayLabel = nightWindowDateFor(new Date());
+  const cutoff = new Date(todayLabel+'T19:00:00'); cutoff.setDate(cutoff.getDate()-rangeDays);
   const inRange = windows.filter(w=> new Date(w.start) >= cutoff);
   const buckets = { awake_day:[], awake_night:[], sleep_day:[], sleep_night:[] };
   inRange.forEach(w=>{
@@ -1264,11 +1276,11 @@ function renderWindowStats(rangeDays){
   renderWindowsDayDetail();
 }
 function renderWindowsDayDetail(){
-  const dayWindows = computeWindows().filter(w=>isOnDate(w.start, windowsListDate));
-  renderWindowsList(dayWindows);
+  const dayWindows = computeWindows().filter(w=>nightWindowDateFor(w.start)===windowsListDate);
+  renderWindowsList(dayWindows, windowsListDate);
 }
 $('windowsListDateInput').addEventListener('change', ()=>{
-  windowsListDate = $('windowsListDateInput').value || new Date().toISOString().slice(0,10);
+  windowsListDate = $('windowsListDateInput').value || nightWindowDateFor(new Date());
   renderWindowsDayDetail();
 });
 $('windowsPrevDayBtn').addEventListener('click', ()=>{
@@ -1282,14 +1294,15 @@ $('windowsNextDayBtn').addEventListener('click', ()=>{
   renderWindowsDayDetail();
 });
 $('windowsTodayJumpBtn').addEventListener('click', ()=>{
-  windowsListDate = new Date().toISOString().slice(0,10);
+  windowsListDate = nightWindowDateFor(new Date());
   $('windowsListDateInput').value = windowsListDate;
   renderWindowsDayDetail();
 });
 function renderWindowTrendCharts(inRange, rangeDays){
+  const todayLabel = nightWindowDateFor(new Date());
   const days = [];
   for(let i=rangeDays-1;i>=0;i--){
-    const d = new Date(); d.setDate(d.getDate()-i);
+    const d = new Date(todayLabel+'T12:00:00'); d.setDate(d.getDate()-i);
     days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
   }
   const dayLabels = days.map(key=>{
@@ -1299,9 +1312,7 @@ function renderWindowTrendCharts(inRange, rangeDays){
   function avgByDay(kind, period){
     return days.map(key=>{
       const vals = inRange.filter(w=>{
-        const d = new Date(w.start);
-        const wKey = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-        return wKey===key && w.kind===kind && w.period===period;
+        return nightWindowDateFor(w.start)===key && w.kind===kind && w.period===period;
       }).map(w=>w.hours);
       if(vals.length===0) return null;
       return +( vals.reduce((a,b)=>a+b,0)/vals.length ).toFixed(2);
@@ -1327,39 +1338,29 @@ function renderWindowTrendCharts(inRange, rangeDays){
   renderTrendChart('sleepDayTrend', 'sleepDayTrendChart', 'יום', sleepDay, '#7C9885');
   renderTrendChart('sleepNightTrend', 'sleepNightTrendChart', 'לילה', sleepNight, '#345C40');
 }
-function renderWindowsList(windows){
-  if(windows.length===0){ $('windowsList').innerHTML = '<div class="empty-hint">אין חלונות שהושלמו ביום הזה</div>'; return; }
+function renderWindowsList(windows, windowLabel){
+  if(windows.length===0){ $('windowsList').innerHTML = '<div class="empty-hint">אין חלונות שהושלמו בטווח הזה</div>'; return; }
   const sorted = [...windows].sort((a,b)=>new Date(b.start)-new Date(a.start));
-  const groups = {};
-  const order = [];
-  sorted.forEach(w=>{
-    const d = new Date(w.start);
-    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-    if(!groups[key]){ groups[key] = []; order.push(key); }
-    groups[key].push(w);
-  });
-  const todayStr = new Date().toISOString().slice(0,10);
-  $('windowsList').innerHTML = order.map(key=>{
-    const d = new Date(key+'T12:00:00');
-    let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
-    if(key===todayStr) label = 'היום · ' + label;
-    const rows = groups[key].map(w=>{
-      const kindIcon = w.kind==='sleep' ? icon('moon') : icon('sun');
-      const iconClass = w.kind==='sleep' ? 'sleep' : 'wake';
-      const kindLabel = w.kind==='sleep' ? 'שינה' : 'ערות';
-      const badgeClass = w.period==='night' ? 'night' : 'day';
-      const badgeText = w.period==='night' ? icon('moon')+' לילה' : icon('sun')+' יום';
-      return `
-      <div class="tl-item">
-        <div class="tl-icon ${iconClass}">${kindIcon}</div>
-        <div class="tl-body">
-          <div class="tl-title">${kindLabel} — ${formatHM(w.hours)} שעות<span class="window-row-meta-badge ${badgeClass}">${badgeText}</span></div>
-          <div class="tl-meta">${fmtTime(w.start)} → ${fmtTime(w.end)}</div>
-        </div>
-      </div>`;
-    }).join('');
-    return `<div class="window-day-group"><div class="window-day-header">${label}</div>${rows}</div>`;
+  const todayStr = nightWindowDateFor(new Date());
+  const d = new Date(windowLabel+'T12:00:00');
+  let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
+  if(windowLabel===todayStr) label = 'היום · ' + label;
+  const rows = sorted.map(w=>{
+    const kindIcon = w.kind==='sleep' ? icon('moon') : icon('sun');
+    const iconClass = w.kind==='sleep' ? 'sleep' : 'wake';
+    const kindLabel = w.kind==='sleep' ? 'שינה' : 'ערות';
+    const badgeClass = w.period==='night' ? 'night' : 'day';
+    const badgeText = w.period==='night' ? icon('moon')+' לילה' : icon('sun')+' יום';
+    return `
+    <div class="tl-item">
+      <div class="tl-icon ${iconClass}">${kindIcon}</div>
+      <div class="tl-body">
+        <div class="tl-title">${kindLabel} — ${formatHM(w.hours)} שעות<span class="window-row-meta-badge ${badgeClass}">${badgeText}</span></div>
+        <div class="tl-meta">${fmtTime(w.start)}${crossDayNote(w.start, windowLabel)} → ${fmtTime(w.end)}${crossDayNote(w.end, windowLabel)}</div>
+      </div>
+    </div>`;
   }).join('');
+  $('windowsList').innerHTML = `<div class="window-day-group"><div class="window-day-header">${label}</div>${rows}</div>`;
 }
 
 /* ---------- settings ---------- */
