@@ -54,8 +54,8 @@ let growthMetric = 'weight';
 let diaperTypeVal = 'pee';
 let sleepPeriodVal = 'day';
 let windowStatsRange = 7;
-let timelineDate = todayLocalStr();
-let windowsListDate = todayLocalStr();
+let timelineCycleStart = null; // null = auto-track the current (live) night-to-night cycle
+let windowsCycleStart = null; // null = auto-track the current (live) night-to-night cycle
 let pendingGrowthPhoto = null;
 let photoCache = {};
 let gePhotoState = { changed:false, data:null };
@@ -192,11 +192,6 @@ function isOnDate(iso, dateStr){
   const localStr = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   return localStr === dateStr;
 }
-function nightWindowDateFor(iso){
-  const d = new Date(iso);
-  if(d.getHours() >= 19) d.setDate(d.getDate()+1);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
 function todayLocalStr(){
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -206,6 +201,61 @@ function crossDayNote(iso, windowLabel){
   const actualDate = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   if(actualDate === windowLabel) return '';
   return ' (' + d.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'}) + ')';
+}
+/* ---------- night-to-night cycles (home "today" timeline) ---------- */
+function computeNightBoundaries(){
+  const events = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  const boundaries = [];
+  for(let i=0;i<events.length;i++){
+    const ev = events[i];
+    if(ev.type!=='sleep') continue;
+    const evPeriod = ev.period || suggestPeriod(ev.time);
+    if(evPeriod!=='night') continue;
+    const prev = i>0 ? events[i-1] : null;
+    const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
+    if(!(prev && prev.type==='wake' && prevPeriod==='night')) boundaries.push(ev.time);
+  }
+  return boundaries;
+}
+function resolveCycleRange(state){
+  const boundaries = computeNightBoundaries();
+  let startIdx;
+  if(state===null) startIdx = boundaries.length-1;
+  else if(state==='EARLIEST') startIdx = -1;
+  else { startIdx = boundaries.indexOf(state); if(startIdx===-1) startIdx = boundaries.length-1; }
+  const start = startIdx>=0 ? boundaries[startIdx] : null;
+  const end = (startIdx+1 < boundaries.length) ? boundaries[startIdx+1] : null;
+  return { start, end, isLive: end===null, startIdx, boundaries };
+}
+function shiftCycle(state, dir){
+  const { startIdx, boundaries } = resolveCycleRange(state);
+  let newIdx = startIdx + dir;
+  if(newIdx < -1) newIdx = -1;
+  if(newIdx > boundaries.length-1) newIdx = boundaries.length-1;
+  return newIdx===-1 ? 'EARLIEST' : boundaries[newIdx];
+}
+function cycleStartForDate(dateStr){
+  const boundaries = computeNightBoundaries();
+  const endOfDay = new Date(dateStr+'T23:59:59');
+  let result = 'EARLIEST';
+  for(const b of boundaries){
+    if(new Date(b) <= endOfDay) result = b; else break;
+  }
+  return result;
+}
+function fmtDayRangeHeader(startDateStr, endDateStr){
+  const dStart = new Date(startDateStr+'T12:00:00');
+  const dEnd = new Date(endDateStr+'T12:00:00');
+  if(startDateStr===endDateStr){
+    return dStart.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
+  }
+  if(dStart.getMonth()===dEnd.getMonth() && dStart.getFullYear()===dEnd.getFullYear()){
+    const monthName = dEnd.toLocaleDateString('he-IL', {month:'long'});
+    return `${dStart.getDate()}–${dEnd.getDate()} ב${monthName}`;
+  }
+  const s = dStart.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'});
+  const e = dEnd.toLocaleDateString('he-IL', {day:'2-digit', month:'2-digit'});
+  return `${s} – ${e}`;
 }
 function splitIntoDayPortions(startISO, endISO){
   const start = new Date(startISO), end = new Date(endISO);
@@ -314,28 +364,20 @@ document.querySelectorAll('nav.tabbar button').forEach(b=>{
 });
 
 /* ---------- day navigation (timeline) ---------- */
-function shiftDate(dateStr, days){
-  const d = new Date(dateStr+'T12:00:00');
-  d.setDate(d.getDate()+days);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
 $('timelineDate').addEventListener('change', ()=>{
-  timelineDate = $('timelineDate').value || todayLocalStr();
+  timelineCycleStart = $('timelineDate').value ? cycleStartForDate($('timelineDate').value) : null;
   renderTodayTimeline();
 });
 $('prevDayBtn').addEventListener('click', ()=>{
-  timelineDate = shiftDate(timelineDate, -1);
-  $('timelineDate').value = timelineDate;
+  timelineCycleStart = shiftCycle(timelineCycleStart, -1);
   renderTodayTimeline();
 });
 $('nextDayBtn').addEventListener('click', ()=>{
-  timelineDate = shiftDate(timelineDate, 1);
-  $('timelineDate').value = timelineDate;
+  timelineCycleStart = shiftCycle(timelineCycleStart, 1);
   renderTodayTimeline();
 });
 $('todayJumpBtn').addEventListener('click', ()=>{
-  timelineDate = todayLocalStr();
-  $('timelineDate').value = timelineDate;
+  timelineCycleStart = null;
   renderTodayTimeline();
 });
 
@@ -395,6 +437,25 @@ function lastDiaper(){
   const d = DATA.events.filter(e=>e.type==='diaper').sort((a,b)=>new Date(b.time)-new Date(a.time));
   return d[0] || null;
 }
+function lastPoop(){
+  const d = DATA.events.filter(e=>e.type==='diaper' && (e.kind==='poop'||e.kind==='both')).sort((a,b)=>new Date(b.time)-new Date(a.time));
+  return d[0] || null;
+}
+function shiftDateStr(dateStr, days){
+  const d = new Date(dateStr+'T12:00:00');
+  d.setDate(d.getDate()+days);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function poopRelativeLabel(iso){
+  const dateStr = localDateStrOf(iso);
+  const today = todayLocalStr();
+  const time = fmtTime(iso);
+  if(dateStr===today) return `קקי - היום, ${time}`;
+  if(dateStr===shiftDateStr(today,-1)) return `קקי - אתמול, ${time}`;
+  if(dateStr===shiftDateStr(today,-2)) return `קקי - שלשום, ${time}`;
+  const d = new Date(iso);
+  return `קקי - ${d.getDate()}.${d.getMonth()+1} ${time}`;
+}
 const TRACKING_START = new Date('2026-07-12T00:00:00');
 function afterTrackingStart(isoTime){
   return new Date(isoTime) >= TRACKING_START;
@@ -424,6 +485,7 @@ function renderStatusStrip(){
   const lastSW = lastSleepEvent();
   const lf = lastFeed();
   const ld = lastDiaper();
+  const lp = lastPoop();
   const lastW = [...DATA.growth].sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
   const statusTime = lastSW ? fmtTime(lastSW.time) : '';
 
@@ -452,7 +514,7 @@ function renderStatusStrip(){
     <div class="chip"><div class="label">${icon('sun')} שעת קימה ממוצעת</div><div class="val">${avgWakeTime||'—'}</div></div>
     <div class="chip"><div class="label">${icon('moon')} שעת הרדמות ממוצעת בלילה</div><div class="val">${avgNightSleep||'—'}</div></div>
     <div class="chip"><div class="label">${icon('bottle')} סה"כ אכילה היום</div><div class="val">${totalFeedToday} מ"ל</div><div class="label" style="margin-top:1px;">מ-6:00</div></div>
-    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div>${ld?`<div class="label" style="margin-top:1px;">${ld.kind==='pee'?'פיפי':ld.kind==='poop'?'קקי':'פיפי + קקי'}</div>`:''}</div>
+    <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div>${lp?`<div class="label" style="margin-top:1px;">${poopRelativeLabel(lp.time)}</div>`:''}</div>
     <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div>${lf?`<div class="label" style="margin-top:1px;">${lf.ml} מ"ל</div>`:''}</div>
     <div class="chip"><div class="label">מצב</div><div class="val">${asleep?icon('moon')+' ישן':icon('sun')+' ער'}</div>${statusTime?`<div class="label" style="margin-top:1px;">מ-${statusTime}</div>`:''}</div>
   `;
@@ -1095,20 +1157,34 @@ function supplementDetailText(ev){
   if(ev.vitaminD) parts.push('ויטמין D');
   return parts.join(', ');
 }
-function updateTimelineTitle(){
-  const todayStr = todayLocalStr();
-  if(timelineDate === todayStr){
-    $('timelineTitle').innerHTML = icon('calendar')+' היום';
-  } else {
-    const d = new Date(timelineDate+'T12:00:00');
-    $('timelineTitle').innerHTML = icon('calendar')+' ' + d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
-  }
+function localDateStrOf(iso){
+  const d = new Date(iso);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function renderTodayTimeline(){
-  updateTimelineTitle();
-  const dayEvents = DATA.events.filter(e=>nightWindowDateFor(e.time)===timelineDate).map(e=>({...e, _kind:'event'}));
-  const dayMilestones = DATA.milestones.filter(m=>nightWindowDateFor(m.time)===timelineDate).map(m=>({...m, type:'milestone', _kind:'milestone'}));
+  const range = resolveCycleRange(timelineCycleStart);
+  const inRange = (t)=>{
+    const time = new Date(t).getTime();
+    if(range.start && time < new Date(range.start).getTime()) return false;
+    if(range.end && time >= new Date(range.end).getTime()) return false;
+    return true;
+  };
+  const dayEvents = DATA.events.filter(e=>inRange(e.time)).map(e=>({...e, _kind:'event'}));
+  const dayMilestones = DATA.milestones.filter(m=>inRange(m.time)).map(m=>({...m, type:'milestone', _kind:'milestone'}));
   const all = [...dayEvents, ...dayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
+
+  let dates = all.map(x=>localDateStrOf(x.time));
+  if(range.isLive) dates.push(todayLocalStr());
+  if(dates.length===0) dates = [ range.start ? localDateStrOf(range.start) : todayLocalStr() ];
+  const startDateStr = dates.reduce((a,b)=>a<b?a:b);
+  const endDateStr = dates.reduce((a,b)=>a>b?a:b);
+  let titleText;
+  if(range.isLive && startDateStr===endDateStr) titleText = 'היום';
+  else if(range.isLive) titleText = 'היום · ' + fmtDayRangeHeader(startDateStr, endDateStr);
+  else titleText = fmtDayRangeHeader(startDateStr, endDateStr);
+  $('timelineTitle').innerHTML = icon('calendar')+' ' + titleText;
+  $('timelineDate').value = endDateStr;
+
   if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום בטווח הזה</div>'; return; }
   $('todayTimeline').innerHTML = all.map(ev=>{
     const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement'||ev.type==='milestone');
@@ -1118,7 +1194,7 @@ function renderTodayTimeline(){
       <div class="tl-body">
         <div class="tl-title">${timelineTitle(ev)}</div>
         ${ev.type==='supplement'?`<div class="tl-meta">${supplementDetailText(ev)}</div>`:''}
-        <div class="tl-meta">${fmtTime(ev.time)}${crossDayNote(ev.time, timelineDate)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
+        <div class="tl-meta">${fmtTime(ev.time)}${crossDayNote(ev.time, endDateStr)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
       </div>
       ${isEditable?`<div class="tl-edit-hint">עריכה ${icon('pencil')}</div>`:''}
     </div>
@@ -1471,8 +1547,9 @@ function avgDailyTotalHours(windows, kind, period){
 }
 function renderWindowStats(rangeDays){
   const windows = computeWindows();
-  const todayLabel = todayLocalStr();
-  const cutoff = new Date(todayLabel+'T19:00:00'); cutoff.setDate(cutoff.getDate()-rangeDays);
+  const boundaries = computeNightBoundaries();
+  const recentBoundaries = boundaries.slice(-rangeDays);
+  const cutoff = recentBoundaries.length ? new Date(recentBoundaries[0]) : new Date(0);
   const inRange = windows.filter(w=> new Date(w.start) >= cutoff);
   const buckets = { awake_day:[], awake_night:[], sleep_day:[], sleep_night:[] };
   inRange.forEach(w=>{
@@ -1495,44 +1572,50 @@ function renderWindowStats(rangeDays){
   renderWindowsDayDetail();
 }
 function renderWindowsDayDetail(){
-  const dayWindows = computeWindows().filter(w=>nightWindowDateFor(w.start)===windowsListDate);
-  renderWindowsList(dayWindows, windowsListDate);
+  const range = resolveCycleRange(windowsCycleStart);
+  const dayWindows = computeWindows().filter(w=>{
+    const t = new Date(w.start).getTime();
+    if(range.start && t < new Date(range.start).getTime()) return false;
+    if(range.end && t >= new Date(range.end).getTime()) return false;
+    return true;
+  });
+  renderWindowsList(dayWindows, range);
 }
 $('windowsListDateInput').addEventListener('change', ()=>{
-  windowsListDate = $('windowsListDateInput').value || todayLocalStr();
+  windowsCycleStart = $('windowsListDateInput').value ? cycleStartForDate($('windowsListDateInput').value) : null;
   renderWindowsDayDetail();
 });
 $('windowsPrevDayBtn').addEventListener('click', ()=>{
-  windowsListDate = shiftDate(windowsListDate, -1);
-  $('windowsListDateInput').value = windowsListDate;
+  windowsCycleStart = shiftCycle(windowsCycleStart, -1);
   renderWindowsDayDetail();
 });
 $('windowsNextDayBtn').addEventListener('click', ()=>{
-  windowsListDate = shiftDate(windowsListDate, 1);
-  $('windowsListDateInput').value = windowsListDate;
+  windowsCycleStart = shiftCycle(windowsCycleStart, 1);
   renderWindowsDayDetail();
 });
 $('windowsTodayJumpBtn').addEventListener('click', ()=>{
-  windowsListDate = todayLocalStr();
-  $('windowsListDateInput').value = windowsListDate;
+  windowsCycleStart = null;
   renderWindowsDayDetail();
 });
 function renderWindowTrendCharts(inRange, rangeDays){
-  const todayLabel = todayLocalStr();
-  const days = [];
-  for(let i=rangeDays-1;i>=0;i--){
-    const d = new Date(todayLabel+'T12:00:00'); d.setDate(d.getDate()-i);
-    days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
-  }
-  const dayLabels = days.map(key=>{
-    const d = new Date(key+'T12:00:00');
+  const boundaries = computeNightBoundaries();
+  const cycleStarts = boundaries.length ? boundaries.slice(-rangeDays) : [null];
+  const dayLabels = cycleStarts.map(cs=>{
+    const d = cs ? new Date(cs) : new Date();
     return rangeDays>7 ? d.toLocaleDateString('he-IL',{day:'2-digit', month:'2-digit'}) : d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'});
   });
+  function bucketIndexFor(time){
+    const t = new Date(time).getTime();
+    let idx = -1;
+    for(let i=0;i<cycleStarts.length;i++){
+      const csTime = cycleStarts[i] ? new Date(cycleStarts[i]).getTime() : -Infinity;
+      if(csTime <= t) idx = i; else break;
+    }
+    return idx;
+  }
   function avgByDay(kind, period){
-    return days.map(key=>{
-      const vals = inRange.filter(w=>{
-        return nightWindowDateFor(w.start)===key && w.kind===kind && w.period===period;
-      }).map(w=>w.hours);
+    return cycleStarts.map((cs,i)=>{
+      const vals = inRange.filter(w=> bucketIndexFor(w.start)===i && w.kind===kind && w.period===period).map(w=>w.hours);
       if(vals.length===0) return null;
       return +( vals.reduce((a,b)=>a+b,0)/vals.length ).toFixed(2);
     });
@@ -1557,13 +1640,19 @@ function renderWindowTrendCharts(inRange, rangeDays){
   renderTrendChart('sleepDayTrend', 'sleepDayTrendChart', 'יום', sleepDay, '#7C9885');
   renderTrendChart('sleepNightTrend', 'sleepNightTrendChart', 'לילה', sleepNight, '#345C40');
 }
-function renderWindowsList(windows, windowLabel){
-  if(windows.length===0){ $('windowsList').innerHTML = '<div class="empty-hint">אין חלונות שהושלמו בטווח הזה</div>'; return; }
+function renderWindowsList(windows, range){
+  let dates = windows.map(w=>localDateStrOf(w.start));
+  if(range.isLive) dates.push(todayLocalStr());
+  if(dates.length===0) dates = [ range.start ? localDateStrOf(range.start) : todayLocalStr() ];
+  const startDateStr = dates.reduce((a,b)=>a<b?a:b);
+  const endDateStr = dates.reduce((a,b)=>a>b?a:b);
+  let label;
+  if(range.isLive && startDateStr===endDateStr) label = 'היום';
+  else if(range.isLive) label = 'היום · ' + fmtDayRangeHeader(startDateStr, endDateStr);
+  else label = fmtDayRangeHeader(startDateStr, endDateStr);
+  $('windowsListDateInput').value = endDateStr;
+  if(windows.length===0){ $('windowsList').innerHTML = `<div class="window-day-group"><div class="window-day-header">${label}</div><div class="empty-hint">אין חלונות שהושלמו בטווח הזה</div></div>`; return; }
   const sorted = [...windows].sort((a,b)=>new Date(b.start)-new Date(a.start));
-  const todayStr = todayLocalStr();
-  const d = new Date(windowLabel+'T12:00:00');
-  let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
-  if(windowLabel===todayStr) label = 'היום · ' + label;
   const rows = sorted.map(w=>{
     const kindIcon = w.kind==='sleep' ? icon('moon') : icon('sun');
     const iconClass = w.kind==='sleep' ? 'sleep' : 'wake';
@@ -1575,7 +1664,7 @@ function renderWindowsList(windows, windowLabel){
       <div class="tl-icon ${iconClass}">${kindIcon}</div>
       <div class="tl-body">
         <div class="tl-title">${kindLabel} — ${formatHM(w.hours)} שעות<span class="window-row-meta-badge ${badgeClass}">${badgeText}</span></div>
-        <div class="tl-meta">${fmtTime(w.start)}${crossDayNote(w.start, windowLabel)} → ${fmtTime(w.end)}${crossDayNote(w.end, windowLabel)}</div>
+        <div class="tl-meta">${fmtTime(w.start)}${crossDayNote(w.start, endDateStr)} → ${fmtTime(w.end)}${crossDayNote(w.end, endDateStr)}</div>
       </div>
     </div>`;
   }).join('');
@@ -1648,8 +1737,6 @@ function init(){
   applyChartTheme();
   refreshWho();
   $('gDate').value = new Date().toISOString().slice(0,10);
-  $('timelineDate').value = timelineDate;
-  $('windowsListDateInput').value = windowsListDate;
   renderMilestonePresets();
   initRealtimeSync();
   if(!ME){ toast('ברוכים הבאים! ספרו לנו מי אתם בהגדרות'); }
