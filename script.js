@@ -1070,16 +1070,39 @@ function allergenExposureCounts(){
   });
   return counts;
 }
+function allergenLastEatenTimes(){
+  const lastTimes = {};
+  DATA.tastes.forEach(t=>{
+    (t.foods||[]).forEach(f=>{
+      if(f.allergen && (!lastTimes[f.allergen] || new Date(t.time) > new Date(lastTimes[f.allergen]))){
+        lastTimes[f.allergen] = t.time;
+      }
+    });
+  });
+  return lastTimes;
+}
+function lastEatenDateLabel(iso){
+  const dateStr = localDateStrOf(iso);
+  const today = todayLocalStr();
+  if(dateStr===today) return 'היום';
+  if(dateStr===shiftDateStr(today,-1)) return 'אתמול';
+  if(dateStr===shiftDateStr(today,-2)) return 'שלשום';
+  const d = new Date(iso);
+  return `${d.getDate()}.${d.getMonth()+1}`;
+}
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
+  const lastTimes = allergenLastEatenTimes();
   $('allergenGrid').innerHTML = ALLERGENS.map(a=>{
     const n = counts[a.key]||0;
     const done = n >= ALLERGEN_GOAL;
+    const lastTime = lastTimes[a.key];
     return `
     <div class="stat-card allergen-card${done?' done':''}">
+      <div class="allergen-name">${a.label}</div>
       <div class="n num">${n}/${ALLERGEN_GOAL}</div>
-      <div class="l">${a.label}</div>
       ${done?`<div class="allergen-done-badge">${icon('sparkle')} הושלם</div>`:''}
+      ${lastTime?`<div class="l" style="margin-top:4px;">נאכל לאחרונה: ${lastEatenDateLabel(lastTime)}</div>`:''}
     </div>`;
   }).join('');
 }
