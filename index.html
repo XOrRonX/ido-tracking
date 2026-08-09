@@ -152,6 +152,21 @@
     <div class="card" id="milestoneList"></div>
   </section>
 
+  <!-- TASTES -->
+  <section class="view" id="view-tastes">
+    <h2 class="section-title"><span data-icon="spoon"></span> טעימות</h2>
+    <div class="card">
+      <button class="primary-btn" id="openTasteBtn" style="width:100%">+ הוספת טעימה חדשה</button>
+    </div>
+
+    <h2 class="section-title"><span data-icon="zap"></span> מעקב אלרגנים</h2>
+    <p class="pct-note" style="margin-top:-6px;">היעד הוא 3 חשיפות לכל אלרגן. הספירה מתעדכנת אוטומטית לפי המאכלים שנרשמים למטה.</p>
+    <div class="stat-grid allergen-grid" id="allergenGrid"></div>
+
+    <h2 class="section-title"><span data-icon="history"></span> היסטוריה</h2>
+    <div class="card" id="tastesList"></div>
+  </section>
+
   <!-- STATS -->
   <section class="view" id="view-stats">
     <h2 class="section-title"><span data-icon="history"></span> חלונות שינה וערות</h2>
@@ -238,6 +253,7 @@
   <button class="active" data-view="home"><span class="ic" data-icon="home"></span>בית</button>
   <button data-view="growth"><span class="ic" data-icon="trendUp"></span>גדילה</button>
   <button data-view="milestones"><span class="ic" data-icon="flag"></span>אבני דרך</button>
+  <button data-view="tastes"><span class="ic" data-icon="spoon"></span>טעימות</button>
   <button data-view="stats"><span class="ic" data-icon="barChart"></span>סטטיסטיקה</button>
   <button data-view="settings"><span class="ic" data-icon="gear"></span>הגדרות</button>
 </nav>
@@ -325,6 +341,32 @@
       <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="mTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
       <button type="button" class="ghost-btn" id="mDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
+    </form>
+  </div>
+</div>
+
+<!-- TASTE MODAL -->
+<div class="modal-overlay" id="tasteModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="tasteModalTitle"><span data-icon="spoon"></span> טעימה חדשה</h3><button class="close" data-close="tasteModal">×</button></div>
+    <div class="field">
+      <label>מה טעם? (אפשר לבחור כמה)</label>
+      <div id="tasteSelectedChips" class="milestone-chips"></div>
+    </div>
+    <div id="tasteFoodPicker"></div>
+    <div class="field">
+      <label>מאכל אחר (לא ברשימה)</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="tOtherInput" placeholder="הקלידו שם מאכל" style="flex:1; width:auto;">
+        <button type="button" class="ghost-btn" id="tOtherAddBtn" style="flex-shrink:0;">הוספה</button>
+      </div>
+    </div>
+    <form class="form-grid" id="tasteForm">
+      <input type="hidden" id="tEditId" value="">
+      <div class="field"><label>הערה (רשות)</label><textarea id="tNote" placeholder="לדוגמה: אהב מאוד, פריחה קלה סביב הפה..."></textarea></div>
+      <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="tTime" required></div>
+      <button type="submit" class="primary-btn">שמירה</button>
+      <button type="button" class="ghost-btn" id="tDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
     </form>
   </div>
 </div>

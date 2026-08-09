@@ -47,7 +47,7 @@ function growthPercentiles(entry){
 }
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [] };
+let DATA = { events: [], growth: [], milestones: [], tastes: [] };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -97,7 +97,8 @@ const ICONS = {
   flag: '<path d="M6 21V4"/><path d="M6 4h13l-3.2 4.2L19 12.4H6"/>',
   zap: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
   list: '<path d="M8 4h8a1 1 0 0 1 1 1v15l-5-3-5 3V5a1 1 0 0 1 1-1Z"/>',
-  pill: '<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)"/><line x1="9" y1="9" x2="9" y2="15" transform="rotate(-45 12 12)"/>'
+  pill: '<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-45 12 12)"/><line x1="9" y1="9" x2="9" y2="15" transform="rotate(-45 12 12)"/>',
+  spoon: '<ellipse cx="12" cy="6.3" rx="3.1" ry="4.1"/><path d="M12 10.3V21"/>'
 };
 function icon(name, cls){
   return `<svg class="ico${cls?(' '+cls):''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]||''}</svg>`;
@@ -253,7 +254,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[] };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[] };
       refreshAll();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
@@ -306,6 +307,7 @@ function switchView(name){
   if(name==='growth') renderGrowthChart();
   if(name==='stats') renderStats();
   if(name==='milestones') renderMilestoneList();
+  if(name==='tastes'){ renderAllergenGrid(); renderTastesList(); }
 }
 document.querySelectorAll('nav.tabbar button').forEach(b=>{
   b.addEventListener('click', ()=>switchView(b.dataset.view));
@@ -842,6 +844,219 @@ function renderMilestoneList(){
   `;}).join('');
   document.querySelectorAll('#milestoneList .milestone-log-item.editable').forEach(el=>{
     el.addEventListener('click', ()=>openMilestoneModal(el.dataset.editId));
+  });
+}
+
+/* ---------- tastes ---------- */
+const ALLERGEN_GOAL = 3;
+const ALLERGENS = [
+  { key:'egg', label:'ביצה' },
+  { key:'peanut', label:'בוטנים' },
+  { key:'treenuts', label:'אגוזי עץ' },
+  { key:'milk', label:'חלב פרה' },
+  { key:'wheat', label:'חיטה' },
+  { key:'soy', label:'סויה' },
+  { key:'fish', label:'דגים' },
+  { key:'sesame', label:'שומשום' }
+];
+const FOOD_CATEGORIES = [
+  { name:'פירות', foods:[
+    {name:'בננה'}, {name:'אבוקדו'}, {name:'תפוח'}, {name:'אגס'}, {name:'מנגו'},
+    {name:'אבטיח'}, {name:'תות'}, {name:'אפרסק'}, {name:'משמש'}, {name:'קיווי'}, {name:'ענבים'}
+  ]},
+  { name:'ירקות', foods:[
+    {name:'בטטה'}, {name:'דלעת'}, {name:'גזר'}, {name:'ברוקולי'}, {name:'כרובית'},
+    {name:'קישוא'}, {name:'אפונה'}, {name:'תירס'}, {name:'תפוח אדמה'}, {name:'סלק'}
+  ]},
+  { name:'דגנים ופחמימות', foods:[
+    {name:'אורז'}, {name:'שיבולת שועל'}, {name:'קינואה'}, {name:'פסטה', allergen:'wheat'}, {name:'לחם', allergen:'wheat'}
+  ]},
+  { name:'חלבונים', foods:[
+    {name:'עוף'}, {name:'בקר'}, {name:'הודו'}, {name:'עדשים'}, {name:'חומוס'}, {name:'טופו', allergen:'soy'}
+  ]},
+  { name:'מוצרי חלב', foods:[
+    {name:'יוגורט', allergen:'milk'}, {name:'גבינה צהובה', allergen:'milk'}, {name:'קוטג׳', allergen:'milk'}
+  ]},
+  { name:'אלרגנים מומלצים לחשיפה מוקדמת', foods:[
+    {name:'ביצה', allergen:'egg'}, {name:'חמאת בוטנים', allergen:'peanut'}, {name:'טחינה', allergen:'sesame'},
+    {name:'שקדים טחונים', allergen:'treenuts'}, {name:'קשיו טחון', allergen:'treenuts'}, {name:'אגוזי מלך טחונים', allergen:'treenuts'},
+    {name:'חלב פרה', allergen:'milk'}, {name:'דג', allergen:'fish'}, {name:'סויה', allergen:'soy'}
+  ]}
+];
+function findFoodPreset(name){
+  for(const cat of FOOD_CATEGORIES){
+    const f = cat.foods.find(x=>x.name===name);
+    if(f) return f;
+  }
+  return null;
+}
+let tasteSelectedFoods = [];
+function renderTasteFoodPicker(){
+  $('tasteFoodPicker').innerHTML = FOOD_CATEGORIES.map(cat=>`
+    <div class="taste-cat-label">${cat.name}</div>
+    <div class="milestone-chips">${cat.foods.map(f=>`<div class="m-chip" data-food="${f.name}">${f.name}</div>`).join('')}</div>
+  `).join('');
+  document.querySelectorAll('#tasteFoodPicker .m-chip').forEach(c=>{
+    c.addEventListener('click', ()=>toggleTasteFood(c.dataset.food));
+  });
+  syncTasteFoodPickerSelection();
+}
+function toggleTasteFood(name){
+  const idx = tasteSelectedFoods.findIndex(f=>f.name===name);
+  if(idx>=0){ tasteSelectedFoods.splice(idx,1); }
+  else{
+    const preset = findFoodPreset(name);
+    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null });
+  }
+  renderTasteSelectedChips();
+  syncTasteFoodPickerSelection();
+}
+function syncTasteFoodPickerSelection(){
+  document.querySelectorAll('#tasteFoodPicker .m-chip').forEach(c=>{
+    c.classList.toggle('selected', tasteSelectedFoods.some(f=>f.name===c.dataset.food));
+  });
+}
+function renderTasteSelectedChips(){
+  if(tasteSelectedFoods.length===0){
+    $('tasteSelectedChips').innerHTML = `<span class="empty-hint" style="padding:0;">עדיין לא נבחרו מאכלים</span>`;
+    return;
+  }
+  $('tasteSelectedChips').innerHTML = tasteSelectedFoods.map((f,i)=>
+    `<div class="m-chip selected" data-i="${i}">${f.name} ×</div>`
+  ).join('');
+  document.querySelectorAll('#tasteSelectedChips .m-chip').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      tasteSelectedFoods.splice(Number(el.dataset.i), 1);
+      renderTasteSelectedChips();
+      syncTasteFoodPickerSelection();
+    });
+  });
+}
+function addOtherTasteFood(){
+  const name = $('tOtherInput').value.trim();
+  if(!name) return;
+  if(!tasteSelectedFoods.some(f=>f.name===name)){
+    tasteSelectedFoods.push({ name, allergen: null });
+    renderTasteSelectedChips();
+    syncTasteFoodPickerSelection();
+  }
+  $('tOtherInput').value = '';
+  $('tOtherInput').focus();
+}
+$('tOtherAddBtn').addEventListener('click', addOtherTasteFood);
+$('tOtherInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); addOtherTasteFood(); } });
+$('openTasteBtn').addEventListener('click', ()=>openTasteModal());
+function openTasteModal(editId){
+  renderTasteFoodPicker();
+  $('tOtherInput').value = '';
+  if(editId){
+    const t = DATA.tastes.find(x=>x.id===editId);
+    if(!t) return;
+    $('tasteModalTitle').innerHTML = icon('spoon')+' עריכת טעימה';
+    $('tEditId').value = editId;
+    tasteSelectedFoods = (t.foods||[]).map(f=>({...f}));
+    $('tNote').value = t.note || '';
+    const d = new Date(t.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+    $('tTime').value = d.toISOString().slice(0,16);
+    $('tDeleteBtn').style.display = 'block';
+  } else {
+    $('tasteModalTitle').innerHTML = icon('spoon')+' טעימה חדשה';
+    $('tEditId').value = '';
+    tasteSelectedFoods = [];
+    $('tNote').value = '';
+    $('tTime').value = nowLocalInput();
+    $('tDeleteBtn').style.display = 'none';
+  }
+  renderTasteSelectedChips();
+  syncTasteFoodPickerSelection();
+  openModal('tasteModal');
+}
+$('tasteForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  if(tasteSelectedFoods.length===0){ toast('בחרו לפחות מאכל אחד'); return; }
+  const editId = $('tEditId').value;
+  const foods = tasteSelectedFoods.map(f=>({ name:f.name, allergen: f.allergen||null }));
+  const note = $('tNote').value.trim();
+  const time = new Date($('tTime').value).toISOString();
+  if(editId){
+    const t = DATA.tastes.find(x=>x.id===editId);
+    if(t){ t.foods = foods; t.note = note; t.time = time; t.editedBy = ME||''; }
+  } else {
+    DATA.tastes.push({ id:uid(), foods, note, time, by:ME||'' });
+  }
+  await saveData();
+  closeModal('tasteModal');
+  toast(editId ? 'הטעימה עודכנה' : 'הטעימה נשמרה');
+  refreshAll();
+});
+$('tDeleteBtn').addEventListener('click', async ()=>{
+  const editId = $('tEditId').value;
+  if(!editId) return;
+  if(!confirm('למחוק את הטעימה הזו?')) return;
+  DATA.tastes = DATA.tastes.filter(x=>x.id!==editId);
+  await saveData();
+  closeModal('tasteModal');
+  toast('הטעימה נמחקה');
+  refreshAll();
+});
+function allergenExposureCounts(){
+  const counts = {};
+  ALLERGENS.forEach(a=>counts[a.key]=0);
+  DATA.tastes.forEach(t=>{
+    const allergensInEntry = new Set((t.foods||[]).map(f=>f.allergen).filter(Boolean));
+    allergensInEntry.forEach(key=>{ if(counts[key]!=null) counts[key]++; });
+  });
+  return counts;
+}
+function renderAllergenGrid(){
+  const counts = allergenExposureCounts();
+  $('allergenGrid').innerHTML = ALLERGENS.map(a=>{
+    const n = counts[a.key]||0;
+    const done = n >= ALLERGEN_GOAL;
+    return `
+    <div class="stat-card allergen-card${done?' done':''}">
+      <div class="n num">${n}/${ALLERGEN_GOAL}</div>
+      <div class="l">${a.label}</div>
+      ${done?`<div class="allergen-done-badge">${icon('sparkle')} הושלם</div>`:''}
+    </div>`;
+  }).join('');
+}
+function renderTastesList(){
+  const list = [...DATA.tastes].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  if(list.length===0){ $('tastesList').innerHTML = `<div class="empty-hint">עוד לא נרשמו טעימות ${icon('sparkle')}</div>`; return; }
+  const groups = {}; const order = [];
+  list.forEach(t=>{
+    const d = new Date(t.time);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(!groups[key]){ groups[key]=[]; order.push(key); }
+    groups[key].push(t);
+  });
+  const todayStr = todayLocalStr();
+  $('tastesList').innerHTML = order.map(key=>{
+    const d = new Date(key+'T12:00:00');
+    let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
+    if(key===todayStr) label = 'היום · ' + label;
+    const rows = groups[key].map(t=>{
+      const foods = t.foods||[];
+      const foodNames = foods.map(f=>f.name).join(', ');
+      const allergenBadges = [...new Set(foods.map(f=>f.allergen).filter(Boolean))]
+        .map(aKey=>ALLERGENS.find(a=>a.key===aKey)).filter(Boolean)
+        .map(a=>`<span class="window-row-meta-badge allergen">${a.label}</span>`).join('');
+      return `
+      <div class="tl-item editable" data-edit-id="${t.id}">
+        <div class="tl-icon taste">${icon('spoon')}</div>
+        <div class="tl-body">
+          <div class="tl-title">${foodNames}${allergenBadges}</div>
+          ${t.note?`<div class="tl-meta">${t.note}</div>`:''}
+          <div class="tl-meta">${fmtTime(t.time)}${t.by?` · <span class="who-badge">${t.by}</span>`:''}</div>
+        </div>
+        <div class="tl-edit-hint">עריכה ${icon('pencil')}</div>
+      </div>`;
+    }).join('');
+    return `<div class="window-day-group"><div class="window-day-header">${label}</div>${rows}</div>`;
+  }).join('');
+  document.querySelectorAll('#tastesList .tl-item.editable').forEach(el=>{
+    el.addEventListener('click', ()=>openTasteModal(el.dataset.editId));
   });
 }
 
@@ -1423,6 +1638,7 @@ function refreshAll(){
   if(document.getElementById('view-growth').classList.contains('active')) renderGrowthChart();
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
   if(document.getElementById('view-milestones').classList.contains('active')) renderMilestoneList();
+  if(document.getElementById('view-tastes').classList.contains('active')){ renderAllergenGrid(); renderTastesList(); }
 }
 
 /* ---------- init ---------- */
