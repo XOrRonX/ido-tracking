@@ -85,8 +85,8 @@
       </button>
       <button class="action-btn supplement" id="supplementsQuickBtn" style="grid-column:1 / -1;">
         <span class="icon" data-icon="pill"></span>
-        <span class="title">תוספים</span>
-        <span class="sub">ברזל / ויטמין D</span>
+        <span class="title">תוספים ותרופות</span>
+        <span class="sub">ברזל, ויטמין D, תרופות ועוד</span>
       </button>
     </div>
 
@@ -376,7 +376,7 @@
 <!-- SUPPLEMENTS MODAL -->
 <div class="modal-overlay" id="supplementsModal">
   <div class="modal">
-    <div class="modal-head"><h3 id="supplementsModalTitle"><span data-icon="pill"></span> תוספים</h3><button class="close" data-close="supplementsModal">×</button></div>
+    <div class="modal-head"><h3 id="supplementsModalTitle"><span data-icon="pill"></span> תוספים ותרופות</h3><button class="close" data-close="supplementsModal">×</button></div>
     <form class="form-grid" id="supplementsForm">
       <input type="hidden" id="supplementsEditId" value="">
       <div class="card" style="box-shadow:none; border-color:var(--line);">
@@ -390,7 +390,18 @@
           <span style="flex:1;">ויטמין D</span>
           <input type="checkbox" id="vitaminDCheck">
         </label>
+        <label class="supplement-row">
+          <span class="m-badge"><span data-icon="pill"></span></span>
+          <span style="flex:1;">נובימול</span>
+          <input type="checkbox" id="novimolCheck">
+        </label>
+        <label class="supplement-row">
+          <span class="m-badge"><span data-icon="pill"></span></span>
+          <span style="flex:1;">אורל ג'ל</span>
+          <input type="checkbox" id="oralGelCheck">
+        </label>
       </div>
+      <div class="field"><label>אחר (רשות)</label><input type="text" id="supplementOtherInput" placeholder="שם תרופה או תוסף שלא ברשימה"></div>
       <div class="field"><label>תאריך ושעה</label><input type="datetime-local" id="supplementsTime" required></div>
       <button type="submit" class="primary-btn">שמירה</button>
       <button type="button" class="ghost-btn" id="supplementsDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>

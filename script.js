@@ -305,7 +305,20 @@ function initRealtimeSync(){
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
       DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[] };
+      let migrated = false;
+      DATA.events.forEach(ev=>{
+        if(ev.type==='supplement' && !ev.items){
+          const items = [];
+          if(ev.iron) items.push('ברזל');
+          if(ev.vitaminD) items.push('ויטמין D');
+          ev.items = items;
+          delete ev.iron;
+          delete ev.vitaminD;
+          migrated = true;
+        }
+      });
       refreshAll();
+      if(migrated) saveData();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
     settingsDocRef.onSnapshot((snap)=>{
@@ -579,22 +592,29 @@ function refreshSleepBtn(){
 }
 
 /* ---------- supplements ---------- */
+const SUPPLEMENT_CHECKS = [
+  ['ironCheck', 'ברזל'],
+  ['vitaminDCheck', 'ויטמין D'],
+  ['novimolCheck', 'נובימול'],
+  ['oralGelCheck', "אורל ג'ל"]
+];
 function openSupplementsModal(editId){
   if(editId){
     const ev = DATA.events.find(e=>e.id===editId);
     if(!ev) return;
-    $('supplementsModalTitle').innerHTML = icon('pill')+' עריכת תוספים';
+    $('supplementsModalTitle').innerHTML = icon('pill')+' עריכת תוספים ותרופות';
     $('supplementsEditId').value = editId;
-    $('ironCheck').checked = !!ev.iron;
-    $('vitaminDCheck').checked = !!ev.vitaminD;
+    const items = ev.items || [];
+    SUPPLEMENT_CHECKS.forEach(([id,label])=>{ $(id).checked = items.includes(label); });
+    $('supplementOtherInput').value = items.find(x=>!SUPPLEMENT_CHECKS.some(([,label])=>label===x)) || '';
     const d = new Date(ev.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
     $('supplementsTime').value = d.toISOString().slice(0,16);
     $('supplementsDeleteBtn').style.display = 'block';
   } else {
-    $('supplementsModalTitle').innerHTML = icon('pill')+' תוספים';
+    $('supplementsModalTitle').innerHTML = icon('pill')+' תוספים ותרופות';
     $('supplementsEditId').value = '';
-    $('ironCheck').checked = false;
-    $('vitaminDCheck').checked = false;
+    SUPPLEMENT_CHECKS.forEach(([id])=>{ $(id).checked = false; });
+    $('supplementOtherInput').value = '';
     $('supplementsTime').value = nowLocalInput();
     $('supplementsDeleteBtn').style.display = 'none';
   }
@@ -603,19 +623,20 @@ function openSupplementsModal(editId){
 $('supplementsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const editId = $('supplementsEditId').value;
-  const iron = $('ironCheck').checked;
-  const vitaminD = $('vitaminDCheck').checked;
-  if(!iron && !vitaminD){ toast('צריך לסמן לפחות תוסף אחד'); return; }
+  const items = SUPPLEMENT_CHECKS.filter(([id])=>$(id).checked).map(([,label])=>label);
+  const other = $('supplementOtherInput').value.trim();
+  if(other) items.push(other);
+  if(items.length===0){ toast('צריך לסמן או להזין לפחות פריט אחד'); return; }
   const time = new Date($('supplementsTime').value).toISOString();
   if(editId){
     const ev = DATA.events.find(x=>x.id===editId);
-    if(ev){ ev.iron = iron; ev.vitaminD = vitaminD; ev.time = time; ev.editedBy = ME||''; }
+    if(ev){ ev.items = items; delete ev.iron; delete ev.vitaminD; ev.time = time; ev.editedBy = ME||''; }
   } else {
-    DATA.events.push({ id: uid(), type:'supplement', iron, vitaminD, time, by: ME||'' });
+    DATA.events.push({ id: uid(), type:'supplement', items, time, by: ME||'' });
   }
   await saveData();
   closeModal('supplementsModal');
-  toast(editId ? 'התוספים עודכנו' : 'התוספים נשמרו');
+  toast(editId ? 'הרשומה עודכנה' : 'הרשומה נשמרה');
   refreshAll();
 });
 $('supplementsDeleteBtn').addEventListener('click', async ()=>{
@@ -1213,10 +1234,7 @@ function timelineTitle(ev){
   return ev.title;
 }
 function supplementDetailText(ev){
-  const parts = [];
-  if(ev.iron) parts.push('ברזל');
-  if(ev.vitaminD) parts.push('ויטמין D');
-  return parts.join(', ');
+  return (ev.items||[]).join(', ');
 }
 function localDateStrOf(iso){
   const d = new Date(iso);
