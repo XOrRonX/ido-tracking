@@ -206,7 +206,8 @@
   .allergen-card{position:relative;}
   .allergen-name{font-size:14.5px; font-weight:700; margin-bottom:4px;}
   .allergen-card.done{border-color:#7FAE6E;}
-  .allergen-done-badge{font-size:10.5px; color:#4C7A3C; margin-top:4px; display:flex; align-items:center; gap:3px;}
+  .allergen-status-badge{font-size:10.5px; color:var(--ink-soft); margin-top:4px; display:flex; align-items:center; gap:3px;}
+  .allergen-status-badge.done{color:#4C7A3C;}
   .taste-cat-label{font-size:12.5px; font-weight:600; color:var(--ink-soft); margin:14px 0 6px;}
   #tasteFoodPicker .taste-cat-label:first-child{margin-top:0;}
 
@@ -329,7 +330,7 @@
   html[data-theme="dark"] .window-row-meta-badge.night{background:#1D2636; color:#9DB8DE;}
   html[data-theme="dark"] .window-row-meta-badge.allergen{background:#3A2420; color:#E8998A;}
   html[data-theme="dark"] .allergen-card.done{border-color:#5C8C4E;}
-  html[data-theme="dark"] .allergen-done-badge{color:#9BCB86;}
+  html[data-theme="dark"] .allergen-status-badge.done{color:#9BCB86;}
 
   .theme-toggle{
     border:1px solid var(--line); background:var(--card); border-radius:14px;
