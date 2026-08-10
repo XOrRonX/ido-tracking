@@ -213,7 +213,9 @@ function computeNightBoundaries(){
     if(evPeriod!=='night') continue;
     const prev = i>0 ? events[i-1] : null;
     const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
-    if(!(prev && prev.type==='wake' && prevPeriod==='night')) boundaries.push(ev.time);
+    const isResumption = prev && prev.type==='wake' && prevPeriod==='night';
+    const isDuplicateSleep = prev && prev.type==='sleep';
+    if(!isResumption && !isDuplicateSleep) boundaries.push(ev.time);
   }
   return boundaries;
 }
@@ -484,7 +486,9 @@ function computeSleepWakeAverages(cutoffDate){
     const evPeriod = ev.period || suggestPeriod(ev.time);
     const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
     if(ev.type==='sleep' && evPeriod==='night'){
-      if(!(prev && prev.type==='wake' && prevPeriod==='night')) nightSleeps.push(ev.time);
+      const isResumption = prev && prev.type==='wake' && prevPeriod==='night';
+      const isDuplicateSleep = prev && prev.type==='sleep';
+      if(!isResumption && !isDuplicateSleep) nightSleeps.push(ev.time);
     }
     if(ev.type==='wake' && evPeriod==='day'){
       if(prev && prev.type==='sleep' && prevPeriod==='night') wakes.push(ev.time);
