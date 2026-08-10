@@ -1178,13 +1178,7 @@ function renderTastesList(){
     let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
     if(key===todayStr) label = 'היום · ' + label;
     const rows = groups[key].map(t=>{
-      const foods = [...(t.foods||[])].sort((a,b)=>a.name.localeCompare(b.name,'he'));
-      const foodTags = foods.map(f=>{
-        const color = findFoodCategoryColor(f.name);
-        const dot = color ? `<span class="taste-food-dot" style="background:${color};"></span>` : '';
-        const allergenMark = f.allergen ? icon('zap') : '';
-        return `<span class="taste-food-tag">${dot}${f.name}${allergenMark}</span>`;
-      }).join('');
+      const foodTags = tasteFoodTagsHtml(t.foods);
       return `
       <div class="tl-item editable" data-edit-id="${t.id}">
         <div class="tl-icon taste">${icon('spoon')}</div>
@@ -1211,6 +1205,7 @@ function timelineIconClass(ev){
   if(ev.type==='feed') return 'feed';
   if(ev.type==='diaper') return ev.kind==='pee' ? 'pee' : 'poop';
   if(ev.type==='supplement') return 'supplement';
+  if(ev.type==='taste') return 'taste';
   return 'milestone';
 }
 function timelineIcon(ev){
@@ -1219,6 +1214,7 @@ function timelineIcon(ev){
   if(ev.type==='feed') return icon('bottle');
   if(ev.type==='diaper') return ev.kind==='pee' ? icon('droplet') : (ev.kind==='both' ? icon('diaper') : icon('poop'));
   if(ev.type==='supplement') return icon('pill');
+  if(ev.type==='taste') return icon('spoon');
   return icon('star');
 }
 function timelineTitle(ev){
@@ -1231,10 +1227,20 @@ function timelineTitle(ev){
     return `פיפי + קקי${ev.consistency?' — '+ev.consistency:''}`;
   }
   if(ev.type==='supplement') return 'תוספים';
+  if(ev.type==='taste') return 'טעימה';
   return ev.title;
 }
 function supplementDetailText(ev){
   return (ev.items||[]).join(', ');
+}
+function tasteFoodTagsHtml(foods){
+  const sorted = [...(foods||[])].sort((a,b)=>a.name.localeCompare(b.name,'he'));
+  return sorted.map(f=>{
+    const color = findFoodCategoryColor(f.name);
+    const dot = color ? `<span class="taste-food-dot" style="background:${color};"></span>` : '';
+    const allergenMark = f.allergen ? icon('zap') : '';
+    return `<span class="taste-food-tag">${dot}${f.name}${allergenMark}</span>`;
+  }).join('');
 }
 function localDateStrOf(iso){
   const d = new Date(iso);
@@ -1250,7 +1256,8 @@ function renderTodayTimeline(){
   };
   const dayEvents = DATA.events.filter(e=>inRange(e.time)).map(e=>({...e, _kind:'event'}));
   const dayMilestones = DATA.milestones.filter(m=>inRange(m.time)).map(m=>({...m, type:'milestone', _kind:'milestone'}));
-  const all = [...dayEvents, ...dayMilestones].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  const dayTastes = DATA.tastes.filter(t=>inRange(t.time)).map(t=>({...t, type:'taste', _kind:'taste'}));
+  const all = [...dayEvents, ...dayMilestones, ...dayTastes].sort((a,b)=>new Date(b.time)-new Date(a.time));
 
   let dates = all.map(x=>localDateStrOf(x.time));
   if(range.isLive) dates.push(todayLocalStr());
@@ -1266,13 +1273,15 @@ function renderTodayTimeline(){
 
   if(all.length===0){ $('todayTimeline').innerHTML = '<div class="tl-empty">לא נרשם כלום בטווח הזה</div>'; return; }
   $('todayTimeline').innerHTML = all.map(ev=>{
-    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement'||ev.type==='milestone');
+    const isEditable = (ev.type==='sleep'||ev.type==='wake'||ev.type==='feed'||ev.type==='diaper'||ev.type==='supplement'||ev.type==='milestone'||ev.type==='taste');
     return `
     <div class="tl-item${isEditable?' editable':''}" ${isEditable?`data-edit-id="${ev.id}" data-edit-type="${ev.type}"`:''}>
       <div class="tl-icon ${timelineIconClass(ev)}">${timelineIcon(ev)}</div>
       <div class="tl-body">
         <div class="tl-title">${timelineTitle(ev)}</div>
         ${ev.type==='supplement'?`<div class="tl-meta">${supplementDetailText(ev)}</div>`:''}
+        ${ev.type==='taste'?`<div class="tl-meta taste-food-tags">${tasteFoodTagsHtml(ev.foods)}</div>`:''}
+        ${ev.type==='taste'&&ev.note?`<div class="tl-meta">${ev.note}</div>`:''}
         <div class="tl-meta">${fmtTime(ev.time)}${crossDayNote(ev.time, endDateStr)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
       </div>
       ${isEditable?`<div class="tl-edit-hint">עריכה ${icon('pencil')}</div>`:''}
@@ -1287,6 +1296,7 @@ function renderTodayTimeline(){
       else if(type==='diaper') openDiaperModal(id);
       else if(type==='supplement') openSupplementsModal(id);
       else if(type==='milestone') openMilestoneModal(id);
+      else if(type==='taste') openTasteModal(id);
     });
   });
 }
