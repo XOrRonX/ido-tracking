@@ -945,6 +945,19 @@ const FOOD_CATEGORIES = [
     {name:'חלב פרה', allergen:'milk'}, {name:'דג', allergen:'fish'}, {name:'סויה', allergen:'soy'}
   ]}
 ];
+const CATEGORY_COLORS = {
+  'פירות': '#D98E86',
+  'ירקות': '#7C9885',
+  'דגנים ופחמימות': '#E0A458',
+  'חלבונים': '#B96A62',
+  'מוצרי חלב': '#7FA8C9'
+};
+function findFoodCategoryColor(name){
+  for(const cat of FOOD_CATEGORIES){
+    if(cat.foods.some(x=>x.name===name)) return CATEGORY_COLORS[cat.name] || null;
+  }
+  return null;
+}
 function findFoodPreset(name){
   for(const cat of FOOD_CATEGORIES){
     const f = cat.foods.find(x=>x.name===name);
@@ -953,10 +966,16 @@ function findFoodPreset(name){
   return null;
 }
 let tasteSelectedFoods = [];
+function everTastedFoodNames(){
+  const set = new Set();
+  DATA.tastes.forEach(t=>(t.foods||[]).forEach(f=>set.add(f.name)));
+  return set;
+}
 function renderTasteFoodPicker(){
+  const tried = everTastedFoodNames();
   $('tasteFoodPicker').innerHTML = FOOD_CATEGORIES.map(cat=>`
     <div class="taste-cat-label">${cat.name}</div>
-    <div class="milestone-chips">${cat.foods.map(f=>`<div class="m-chip" data-food="${f.name}">${f.name}</div>`).join('')}</div>
+    <div class="milestone-chips">${cat.foods.map(f=>`<div class="m-chip${tried.has(f.name)?' tried':''}" data-food="${f.name}">${f.name}</div>`).join('')}</div>
   `).join('');
   document.querySelectorAll('#tasteFoodPicker .m-chip').forEach(c=>{
     c.addEventListener('click', ()=>toggleTasteFood(c.dataset.food));
@@ -1106,9 +1125,25 @@ function renderAllergenGrid(){
     </div>`;
   }).join('');
 }
+function renderTasteLegend(){
+  const catItems = Object.entries(CATEGORY_COLORS).map(([name,color])=>
+    `<span class="taste-legend-item"><span class="taste-food-dot" style="background:${color};"></span>${name}</span>`
+  ).join('');
+  $('tasteCategoryLegend').innerHTML = catItems + `<span class="taste-legend-item">${icon('zap')} אלרגן</span>`;
+}
+let tastesHistoryDays = 7;
 function renderTastesList(){
-  const list = [...DATA.tastes].sort((a,b)=>new Date(b.time)-new Date(a.time));
-  if(list.length===0){ $('tastesList').innerHTML = `<div class="empty-hint">עוד לא נרשמו טעימות ${icon('sparkle')}</div>`; return; }
+  renderTasteLegend();
+  const fullList = [...DATA.tastes].sort((a,b)=>new Date(b.time)-new Date(a.time));
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-tastesHistoryDays); cutoff.setHours(0,0,0,0);
+  const list = fullList.filter(t=>new Date(t.time) >= cutoff);
+  const hasMore = list.length < fullList.length;
+  const loadMoreHtml = hasMore ? `<button type="button" class="ghost-btn" id="tastesLoadMoreBtn" style="width:100%; margin-top:10px;">טעינת 7 ימים נוספים</button>` : '';
+  if(list.length===0){
+    $('tastesList').innerHTML = `<div class="empty-hint">אין טעימות ב-${tastesHistoryDays} הימים האחרונים ${icon('sparkle')}</div>` + loadMoreHtml;
+    if(hasMore) $('tastesLoadMoreBtn').addEventListener('click', ()=>{ tastesHistoryDays += 7; renderTastesList(); });
+    return;
+  }
   const groups = {}; const order = [];
   list.forEach(t=>{
     const d = new Date(t.time);
@@ -1122,16 +1157,18 @@ function renderTastesList(){
     let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
     if(key===todayStr) label = 'היום · ' + label;
     const rows = groups[key].map(t=>{
-      const foods = t.foods||[];
-      const foodNames = foods.map(f=>f.name).join(', ');
-      const allergenBadges = [...new Set(foods.map(f=>f.allergen).filter(Boolean))]
-        .map(aKey=>ALLERGENS.find(a=>a.key===aKey)).filter(Boolean)
-        .map(a=>`<span class="window-row-meta-badge allergen">${a.label}</span>`).join('');
+      const foods = [...(t.foods||[])].sort((a,b)=>a.name.localeCompare(b.name,'he'));
+      const foodTags = foods.map(f=>{
+        const color = findFoodCategoryColor(f.name);
+        const dot = color ? `<span class="taste-food-dot" style="background:${color};"></span>` : '';
+        const allergenMark = f.allergen ? icon('zap') : '';
+        return `<span class="taste-food-tag">${dot}${f.name}${allergenMark}</span>`;
+      }).join('');
       return `
       <div class="tl-item editable" data-edit-id="${t.id}">
         <div class="tl-icon taste">${icon('spoon')}</div>
         <div class="tl-body">
-          <div class="tl-title">${foodNames}${allergenBadges}</div>
+          <div class="tl-title taste-food-tags">${foodTags}</div>
           ${t.note?`<div class="tl-meta">${t.note}</div>`:''}
           <div class="tl-meta">${fmtTime(t.time)}${t.by?` · <span class="who-badge">${t.by}</span>`:''}</div>
         </div>
@@ -1139,10 +1176,11 @@ function renderTastesList(){
       </div>`;
     }).join('');
     return `<div class="window-day-group"><div class="window-day-header">${label}</div>${rows}</div>`;
-  }).join('');
+  }).join('') + loadMoreHtml;
   document.querySelectorAll('#tastesList .tl-item.editable').forEach(el=>{
     el.addEventListener('click', ()=>openTasteModal(el.dataset.editId));
   });
+  if(hasMore) $('tastesLoadMoreBtn').addEventListener('click', ()=>{ tastesHistoryDays += 7; renderTastesList(); });
 }
 
 /* ---------- today timeline ---------- */
