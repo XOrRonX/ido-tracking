@@ -1354,30 +1354,46 @@ $('growthForm').addEventListener('submit', async (e)=>{
   updateGAgeShow();
   refreshAll();
 });
-function renderGrowthHistory(){
+function renderGrowthPhotoCarouselSync(){
   const list = [...DATA.growth].sort((a,b)=>new Date(b.date)-new Date(a.date));
-  if(list.length===0){ $('growthHistory').innerHTML = '<div class="empty-hint">עוד אין מדידות</div>'; return; }
-  $('growthHistory').innerHTML = list.map(g=>{
+  if(list.length===0){ $('growthPhotoCarousel').innerHTML = '<div class="empty-hint">עוד אין מדידות</div>'; $('growthPhotoCarousel').style.display = 'block'; return; }
+  $('growthPhotoCarousel').style.display = 'flex';
+  $('growthPhotoCarousel').innerHTML = list.map(g=>{
     const pct = growthPercentiles(g);
     const pctParts = [];
     if(pct){
       if(pct.weight!=null) pctParts.push(`משקל: אחוזון ${pct.weight}`);
       if(pct.height!=null) pctParts.push(`גובה: אחוזון ${pct.height}`);
     }
+    const caption = `${g.weight?g.weight+' ק"ג':''}${g.weight&&g.height?' · ':''}${g.height?g.height+' ס"מ':''}`;
+    const media = (g.photo && photoCache[g.id])
+      ? `<img src="${photoCache[g.id]}" class="growth-carousel-img">`
+      : `<div class="growth-carousel-placeholder">${icon('ruler')}</div>`;
     return `
-    <div class="tl-item editable" data-edit-id="${g.id}">
-      <div class="tl-icon milestone">${g.photo?icon('camera'):icon('ruler')}</div>
-      <div class="tl-body">
-        <div class="tl-title">${g.weight?g.weight+' ק"ג':''}${g.weight&&g.height?' · ':''}${g.height?g.height+' ס"מ':''}</div>
-        <div class="tl-meta">${new Date(g.date).toLocaleDateString('he-IL')}${g.by?` · <span class="who-badge">${g.by}</span>`:''}</div>
-        ${pctParts.length?`<div class="tl-meta">${pctParts.join(' · ')}</div>`:''}
+    <div class="growth-carousel-slide" data-edit-id="${g.id}">
+      ${media}
+      <div class="growth-carousel-caption">
+        <div class="growth-carousel-caption-main">${caption}<span class="growth-carousel-edit-hint">${icon('pencil')}</span></div>
+        <div class="growth-carousel-caption-date">${new Date(g.date).toLocaleDateString('he-IL')}${g.by?` · ${g.by}`:''}</div>
+        ${pctParts.length?`<div class="growth-carousel-caption-date">${pctParts.join(' · ')}</div>`:''}
       </div>
-      <div class="tl-edit-hint">עריכה ${icon('pencil')}</div>
-    </div>
-  `;}).join('');
-  document.querySelectorAll('#growthHistory .tl-item.editable').forEach(el=>{
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#growthPhotoCarousel .growth-carousel-slide').forEach(el=>{
     el.addEventListener('click', ()=>openGrowthEditModal(el.dataset.editId));
   });
+}
+async function renderGrowthHistory(){
+  renderGrowthPhotoCarouselSync();
+  const needFetch = DATA.growth.filter(g=>g.photo && !photoCache[g.id]);
+  if(needFetch.length===0 || !fbReady) return;
+  await Promise.all(needFetch.map(async g=>{
+    try{
+      const doc = await db.collection('ido_photos').doc(g.id).get();
+      if(doc.exists) photoCache[g.id] = doc.data().data;
+    }catch(e){ console.error(e); }
+  }));
+  renderGrowthPhotoCarouselSync();
 }
 
 async function openGrowthEditModal(entryId){
