@@ -47,7 +47,7 @@ function growthPercentiles(entry){
 }
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [], tastes: [] };
+let DATA = { events: [], growth: [], milestones: [], tastes: [], customFoods: [] };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -306,7 +306,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[] };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[], customFoods: d.customFoods||[] };
       let migrated = false;
       DATA.events.forEach(ev=>{
         if(ev.type==='supplement' && !ev.items){
@@ -977,14 +977,31 @@ const CATEGORY_COLORS = {
   'חלבונים': '#B96A62',
   'מוצרי חלב': '#7FA8C9'
 };
+const CUSTOM_CATEGORY_PALETTE = ['#9B8AA0','#8AA0A6','#C9A66B','#A67C8A','#7E9E7E'];
+function categoryColorFor(name){
+  if(name==='אלרגנים מומלצים לחשיפה מוקדמת') return null;
+  if(CATEGORY_COLORS[name]) return CATEGORY_COLORS[name];
+  let hash = 0;
+  for(let i=0;i<name.length;i++) hash = (hash*31 + name.charCodeAt(i)) % CUSTOM_CATEGORY_PALETTE.length;
+  return CUSTOM_CATEGORY_PALETTE[Math.abs(hash)%CUSTOM_CATEGORY_PALETTE.length];
+}
+function allFoodCategories(){
+  const merged = FOOD_CATEGORIES.map(cat=>({ name:cat.name, foods:[...cat.foods] }));
+  (DATA.customFoods||[]).forEach(cf=>{
+    let cat = merged.find(c=>c.name===cf.category);
+    if(!cat){ cat = { name:cf.category, foods:[] }; merged.push(cat); }
+    if(!cat.foods.some(f=>f.name===cf.name)) cat.foods.push({ name:cf.name, allergen:cf.allergen||null });
+  });
+  return merged;
+}
 function findFoodCategoryColor(name){
-  for(const cat of FOOD_CATEGORIES){
-    if(cat.foods.some(x=>x.name===name)) return CATEGORY_COLORS[cat.name] || null;
+  for(const cat of allFoodCategories()){
+    if(cat.foods.some(x=>x.name===name)) return categoryColorFor(cat.name);
   }
   return null;
 }
 function findFoodPreset(name){
-  for(const cat of FOOD_CATEGORIES){
+  for(const cat of allFoodCategories()){
     const f = cat.foods.find(x=>x.name===name);
     if(f) return f;
   }
@@ -996,9 +1013,19 @@ function everTastedFoodNames(){
   DATA.tastes.forEach(t=>(t.foods||[]).forEach(f=>set.add(f.name)));
   return set;
 }
+function populateOtherCategorySelect(){
+  const cats = allFoodCategories().map(c=>c.name);
+  $('tOtherCategorySelect').innerHTML = cats.map(c=>`<option value="${c}">${c}</option>`).join('') + `<option value="__new__">קטגוריה חדשה...</option>`;
+  $('tOtherCategorySelect').value = cats[0] || '__new__';
+  $('tOtherNewCategoryInput').style.display = $('tOtherCategorySelect').value==='__new__' ? 'block' : 'none';
+  $('tOtherNewCategoryInput').value = '';
+}
+$('tOtherCategorySelect').addEventListener('change', ()=>{
+  $('tOtherNewCategoryInput').style.display = $('tOtherCategorySelect').value==='__new__' ? 'block' : 'none';
+});
 function renderTasteFoodPicker(){
   const tried = everTastedFoodNames();
-  $('tasteFoodPicker').innerHTML = FOOD_CATEGORIES.map(cat=>`
+  $('tasteFoodPicker').innerHTML = allFoodCategories().map(cat=>`
     <div class="taste-cat-label">${cat.name}</div>
     <div class="milestone-chips">${cat.foods.map(f=>`<div class="m-chip${tried.has(f.name)?' tried':''}" data-food="${f.name}">${f.name}</div>`).join('')}</div>
   `).join('');
@@ -1006,6 +1033,7 @@ function renderTasteFoodPicker(){
     c.addEventListener('click', ()=>toggleTasteFood(c.dataset.food));
   });
   syncTasteFoodPickerSelection();
+  populateOtherCategorySelect();
 }
 function toggleTasteFood(name){
   const idx = tasteSelectedFoods.findIndex(f=>f.name===name);
@@ -1038,11 +1066,26 @@ function renderTasteSelectedChips(){
     });
   });
 }
-function addOtherTasteFood(){
+async function addOtherTasteFood(){
   const name = $('tOtherInput').value.trim();
-  if(!name) return;
+  if(!name){ toast('הזינו שם מאכל'); return; }
+  const existing = findFoodPreset(name);
+  if(!existing){
+    let category = $('tOtherCategorySelect').value;
+    if(category==='__new__'){
+      category = $('tOtherNewCategoryInput').value.trim();
+      if(!category){ toast('הזינו שם לקטגוריה, או בחרו קטגוריה קיימת'); return; }
+    }
+    DATA.customFoods = DATA.customFoods || [];
+    if(!DATA.customFoods.some(f=>f.name===name)){
+      DATA.customFoods.push({ name, category, allergen: null });
+      await saveData();
+    }
+    renderTasteFoodPicker();
+  }
   if(!tasteSelectedFoods.some(f=>f.name===name)){
-    tasteSelectedFoods.push({ name, allergen: null });
+    const preset = findFoodPreset(name);
+    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null });
     renderTasteSelectedChips();
     syncTasteFoodPickerSelection();
   }
@@ -1151,9 +1194,11 @@ function renderAllergenGrid(){
   }).join('');
 }
 function renderTasteLegend(){
-  const catItems = Object.entries(CATEGORY_COLORS).map(([name,color])=>
-    `<span class="taste-legend-item"><span class="taste-food-dot" style="background:${color};"></span>${name}</span>`
-  ).join('');
+  const catItems = allFoodCategories()
+    .map(cat=>({name:cat.name, color:categoryColorFor(cat.name)}))
+    .filter(c=>c.color)
+    .map(c=>`<span class="taste-legend-item"><span class="taste-food-dot" style="background:${c.color};"></span>${c.name}</span>`)
+    .join('');
   $('tasteCategoryLegend').innerHTML = catItems + `<span class="taste-legend-item">${icon('zap')} אלרגן</span>`;
 }
 let tastesHistoryDays = 7;

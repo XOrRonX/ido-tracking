@@ -360,11 +360,14 @@
     <div id="tasteFoodPicker"></div>
     <div class="field">
       <label>מאכל אחר (לא ברשימה)</label>
-      <div style="display:flex; gap:8px;">
-        <input type="text" id="tOtherInput" placeholder="הקלידו שם מאכל" style="flex:1; width:auto;">
-        <button type="button" class="ghost-btn" id="tOtherAddBtn" style="flex-shrink:0;">הוספה</button>
-      </div>
+      <input type="text" id="tOtherInput" placeholder="הקלידו שם מאכל">
     </div>
+    <div class="field">
+      <label>לאיזו קטגוריה זה שייך?</label>
+      <select id="tOtherCategorySelect"></select>
+      <input type="text" id="tOtherNewCategoryInput" placeholder="שם הקטגוריה החדשה" style="display:none; margin-top:8px;">
+    </div>
+    <button type="button" class="ghost-btn" id="tOtherAddBtn" style="width:100%;">הוספת מאכל</button>
     <form class="form-grid" id="tasteForm">
       <input type="hidden" id="tEditId" value="">
       <div class="field"><label>הערה (רשות)</label><textarea id="tNote" placeholder="לדוגמה: אהב מאוד, פריחה קלה סביב הפה..."></textarea></div>
