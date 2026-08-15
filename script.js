@@ -1171,11 +1171,10 @@ function allergenLastEatenTimes(){
 function lastEatenDateLabel(iso){
   const dateStr = localDateStrOf(iso);
   const today = todayLocalStr();
-  if(dateStr===today) return 'היום';
-  if(dateStr===shiftDateStr(today,-1)) return 'אתמול';
-  if(dateStr===shiftDateStr(today,-2)) return 'שלשום';
-  const d = new Date(iso);
-  return `${d.getDate()}.${d.getMonth()+1}`;
+  const diffDays = Math.round((new Date(today) - new Date(dateStr)) / 86400000);
+  if(diffDays<=0) return 'היום';
+  if(diffDays===1) return 'לפני יום';
+  return `לפני ${diffDays} ימים`;
 }
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
