@@ -1236,6 +1236,7 @@ function renderTastesList(){
           ${t.note?`<div class="tl-meta">${t.note}</div>`:''}
           <div class="tl-meta">${fmtTime(t.time)}${t.by?` · <span class="who-badge">${t.by}</span>`:''}</div>
         </div>
+        <button type="button" class="taste-repeat-btn" data-repeat-id="${t.id}" title="בצע שוב">${icon('rotate')}</button>
         <div class="tl-edit-hint">עריכה ${icon('pencil')}</div>
       </div>`;
     }).join('');
@@ -1244,7 +1245,28 @@ function renderTastesList(){
   document.querySelectorAll('#tastesList .tl-item.editable').forEach(el=>{
     el.addEventListener('click', ()=>openTasteModal(el.dataset.editId));
   });
+  document.querySelectorAll('#tastesList .taste-repeat-btn').forEach(el=>{
+    el.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      repeatTasteEntry(el.dataset.repeatId);
+    });
+  });
   if(hasMore) $('tastesLoadMoreBtn').addEventListener('click', ()=>{ tastesHistoryDays += 7; renderTastesList(); });
+}
+function repeatTasteEntry(id){
+  const t = DATA.tastes.find(x=>x.id===id);
+  if(!t) return;
+  renderTasteFoodPicker();
+  $('tOtherInput').value = '';
+  $('tasteModalTitle').innerHTML = icon('spoon')+' טעימה חדשה';
+  $('tEditId').value = '';
+  tasteSelectedFoods = (t.foods||[]).map(f=>({...f}));
+  $('tNote').value = '';
+  $('tTime').value = nowLocalInput();
+  $('tDeleteBtn').style.display = 'none';
+  renderTasteSelectedChips();
+  syncTasteFoodPickerSelection();
+  openModal('tasteModal');
 }
 
 /* ---------- today timeline ---------- */

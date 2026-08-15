@@ -173,6 +173,13 @@
   .taste-legend{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; font-size:11.5px; color:var(--ink-soft);}
   .taste-legend-item{display:inline-flex; align-items:center; gap:4px;}
   .taste-legend-item svg.ico{width:11px; height:11px; color:#A54B3A;}
+  .taste-repeat-btn{
+    flex-shrink:0; align-self:center; width:32px; height:32px; border-radius:50%;
+    border:1px solid var(--line); background:var(--card); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .taste-repeat-btn svg.ico{width:15px; height:15px;}
+  .taste-repeat-btn:active{background:var(--cream-2);}
 
   .growth-carousel{
     display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory;
