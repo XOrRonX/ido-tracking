@@ -849,7 +849,7 @@ function renderMilestonePresets(){
     });
   });
 }
-$('milestoneQuickBtn').addEventListener('click', ()=>openMilestoneModal());
+$('tasteQuickBtn').addEventListener('click', ()=>openTasteModal());
 $('supplementsQuickBtn').addEventListener('click', ()=>openSupplementsModal());
 $('openMilestoneBtn').addEventListener('click', ()=>openMilestoneModal());
 function openMilestoneModal(editId){

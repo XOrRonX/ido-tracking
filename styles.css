@@ -124,7 +124,7 @@
   .action-btn.sleep.on .sub{color:rgba(255,255,255,0.85);}
   .action-btn.feed{border-color:#eddcc4;}
   .action-btn.diaper{border-color:#efd7d3;}
-  .action-btn.milestone{border-color:#cfe0e9;}
+  .action-btn.taste{border-color:#cfe0e9;}
   .action-btn.supplement{border-color:#e5dcc4; flex-direction:row; align-items:center; justify-content:center; gap:10px; padding:14px;}
   .action-btn.supplement .title{margin-inline-start:2px;}
 
@@ -347,7 +347,7 @@
   .action-btn.sleep .icon svg.ico{color:var(--sage-deep);}
   .action-btn.feed .icon svg.ico{color:var(--honey-deep);}
   .action-btn.diaper .icon svg.ico{color:var(--rose-deep);}
-  .action-btn.milestone .icon svg.ico{color:var(--sky);}
+  .action-btn.taste .icon svg.ico{color:var(--sky);}
   .action-btn.sleep.on .icon svg.ico{color:#fff;}
   .tl-icon svg.ico{width:18px; height:18px;}
   .m-badge svg.ico{width:17px; height:17px;}
