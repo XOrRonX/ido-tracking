@@ -1176,6 +1176,28 @@ function lastEatenDateLabel(iso){
   if(diffDays===1) return 'לפני יום';
   return `לפני ${diffDays} ימים`;
 }
+let allergenReminderShown = false;
+function checkAllergenReminder(){
+  if(allergenReminderShown) return;
+  const counts = allergenExposureCounts();
+  const lastTimes = allergenLastEatenTimes();
+  const overdue = ALLERGENS.filter(a=>{
+    if((counts[a.key]||0)===0) return false;
+    const last = lastTimes[a.key];
+    if(!last) return false;
+    return (Date.now() - new Date(last).getTime())/86400000 > 7;
+  });
+  if(overdue.length===0) return;
+  allergenReminderShown = true;
+  $('allergenReminderList').innerHTML = overdue.map(a=>`
+    <div class="tl-item">
+      <div class="tl-body">
+        <div class="tl-title">${a.label}</div>
+        <div class="tl-meta">נאכל לאחרונה: ${lastEatenDateLabel(lastTimes[a.key])}</div>
+      </div>
+    </div>`).join('');
+  openModal('allergenReminderModal');
+}
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
   const lastTimes = allergenLastEatenTimes();
@@ -1903,6 +1925,7 @@ function refreshAll(){
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
   if(document.getElementById('view-milestones').classList.contains('active')) renderMilestoneList();
   if(document.getElementById('view-tastes').classList.contains('active')){ renderAllergenGrid(); renderTastesList(); }
+  checkAllergenReminder();
 }
 
 /* ---------- init ---------- */
