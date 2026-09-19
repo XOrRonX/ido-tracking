@@ -60,6 +60,7 @@ let pendingGrowthPhoto = null;
 let photoCache = {};
 let gePhotoState = { changed:false, data:null };
 let charts = {};
+let dataLoaded = false; // FIX: true only after the first Firestore snapshot for DATA has arrived
 
 const $ = (id) => document.getElementById(id);
 
@@ -320,6 +321,7 @@ function initRealtimeSync(){
         }
       });
       refreshAll();
+      dataLoaded = true; // FIX: only now is it safe for saveData() to push DATA back to Firestore
       if(migrated) saveData();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
@@ -339,6 +341,7 @@ function initRealtimeSync(){
 }
 async function saveData(){
   if(!fbReady){ toast('אין חיבור למסד הנתונים'); return; }
+  if(!dataLoaded){ toast('עדיין טוען נתונים, נסו שוב בעוד רגע'); return; } // FIX: block writes until the real data has loaded, to avoid overwriting it with the empty initial DATA
   try{ await dataDocRef.set(DATA); }
   catch(e){ toast('שגיאה בשמירה — נסו שוב'); }
 }
