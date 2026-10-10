@@ -47,7 +47,7 @@ function growthPercentiles(entry){
 }
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [], tastes: [], customFoods: [], foodAllergenOverrides: {}, foodNutritionOverrides: {} };
+let DATA = { events: [], growth: [], milestones: [], tastes: [], customFoods: [], foodAllergenOverrides: {}, foodNutritionOverrides: {}, customMedications: [] };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -311,7 +311,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[], customFoods: d.customFoods||[], foodAllergenOverrides: d.foodAllergenOverrides||{}, foodNutritionOverrides: d.foodNutritionOverrides||{} };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[], customFoods: d.customFoods||[], foodAllergenOverrides: d.foodAllergenOverrides||{}, foodNutritionOverrides: d.foodNutritionOverrides||{}, customMedications: d.customMedications||[] };
       let migrated = false;
       DATA.events.forEach(ev=>{
         if(ev.type==='supplement' && !ev.items){
@@ -628,12 +628,20 @@ function refreshSleepBtn(){
 }
 
 /* ---------- supplements ---------- */
-const SUPPLEMENT_CHECKS = [
-  ['ironCheck', 'ברזל'],
-  ['vitaminDCheck', 'ויטמין D'],
-  ['novimolCheck', 'נובימול'],
-  ['oralGelCheck', "אורל ג'ל"]
-];
+const SUPPLEMENT_BASE_ITEMS = ['ברזל', 'ויטמין D', 'נובימול', "אורל ג'ל"];
+function allSupplementItems(){
+  const custom = (DATA.customMedications||[]).filter(m=>!SUPPLEMENT_BASE_ITEMS.includes(m));
+  return SUPPLEMENT_BASE_ITEMS.concat(custom);
+}
+function renderSupplementChecks(checkedLabels){
+  const checked = checkedLabels || [];
+  $('supplementChecksList').innerHTML = allSupplementItems().map(label=>`
+    <label class="supplement-row">
+      <input type="checkbox" data-label="${label.replace(/"/g,'&quot;')}" ${checked.includes(label)?'checked':''}>
+      <span>${label}</span>
+    </label>
+  `).join('');
+}
 function openSupplementsModal(editId){
   if(editId){
     const ev = DATA.events.find(e=>e.id===editId);
@@ -641,15 +649,16 @@ function openSupplementsModal(editId){
     $('supplementsModalTitle').innerHTML = icon('pill')+' עריכת תוספים ותרופות';
     $('supplementsEditId').value = editId;
     const items = ev.items || [];
-    SUPPLEMENT_CHECKS.forEach(([id,label])=>{ $(id).checked = items.includes(label); });
-    $('supplementOtherInput').value = items.find(x=>!SUPPLEMENT_CHECKS.some(([,label])=>label===x)) || '';
+    const known = allSupplementItems();
+    renderSupplementChecks(items);
+    $('supplementOtherInput').value = items.find(x=>!known.includes(x)) || '';
     const d = new Date(ev.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
     $('supplementsTime').value = d.toISOString().slice(0,16);
     $('supplementsDeleteBtn').style.display = 'block';
   } else {
     $('supplementsModalTitle').innerHTML = icon('pill')+' תוספים ותרופות';
     $('supplementsEditId').value = '';
-    SUPPLEMENT_CHECKS.forEach(([id])=>{ $(id).checked = false; });
+    renderSupplementChecks([]);
     $('supplementOtherInput').value = '';
     $('supplementsTime').value = nowLocalInput();
     $('supplementsDeleteBtn').style.display = 'none';
@@ -659,9 +668,15 @@ function openSupplementsModal(editId){
 $('supplementsForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   const editId = $('supplementsEditId').value;
-  const items = SUPPLEMENT_CHECKS.filter(([id])=>$(id).checked).map(([,label])=>label);
+  const items = Array.from($('supplementChecksList').querySelectorAll('input[type="checkbox"]:checked')).map(cb=>cb.dataset.label);
   const other = $('supplementOtherInput').value.trim();
-  if(other) items.push(other);
+  if(other){
+    items.push(other);
+    if(!allSupplementItems().includes(other)){
+      DATA.customMedications = DATA.customMedications || [];
+      DATA.customMedications.push(other);
+    }
+  }
   if(items.length===0){ toast('צריך לסמן או להזין לפחות פריט אחד'); return; }
   const time = new Date($('supplementsTime').value).toISOString();
   if(editId){
