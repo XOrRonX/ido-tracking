@@ -1248,7 +1248,7 @@ function renderAllergenGrid(){
     return `
     <div class="stat-card allergen-card${done?' done':''}">
       <div class="allergen-name">${a.label}</div>
-      <div class="n num">${n}/${ALLERGEN_GOAL}</div>
+      ${done ? '' : `<div class="n num">${n}/${ALLERGEN_GOAL}</div>`}
       <div class="allergen-status-badge${done?' done':''}">${icon('sparkle')} ${done?'הושלם':'לא הושלם'}</div>
       <div class="l" style="margin-top:4px;">נאכל לאחרונה: ${lastTime?lastEatenDateLabel(lastTime):'-'}</div>
     </div>`;
