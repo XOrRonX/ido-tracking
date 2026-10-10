@@ -1179,9 +1179,10 @@ function lastEatenDateLabel(iso){
   if(diffDays===1) return 'לפני יום';
   return `לפני ${diffDays} ימים`;
 }
-let allergenReminderShown = false;
 function checkAllergenReminder(){
-  if(allergenReminderShown) return;
+  if(localStorage.getItem('ido_allergen_reminder_disabled')==='true') return;
+  const todayStr = todayLocalStr();
+  if(localStorage.getItem('ido_allergen_reminder_date')===todayStr) return;
   const counts = allergenExposureCounts();
   const lastTimes = allergenLastEatenTimes();
   const overdue = ALLERGENS.filter(a=>{
@@ -1191,7 +1192,7 @@ function checkAllergenReminder(){
     return (Date.now() - new Date(last).getTime())/86400000 > 7;
   });
   if(overdue.length===0) return;
-  allergenReminderShown = true;
+  localStorage.setItem('ido_allergen_reminder_date', todayStr);
   $('allergenReminderList').innerHTML = overdue.map(a=>`
     <div class="tl-item">
       <div class="tl-body">
@@ -1199,8 +1200,17 @@ function checkAllergenReminder(){
         <div class="tl-meta">נאכל לאחרונה: ${lastEatenDateLabel(lastTimes[a.key])}</div>
       </div>
     </div>`).join('');
+  $('allergenReminderDontShowAgain').checked = false;
   openModal('allergenReminderModal');
 }
+function closeAllergenReminderModal(){
+  if($('allergenReminderDontShowAgain').checked){
+    localStorage.setItem('ido_allergen_reminder_disabled', 'true');
+  }
+  closeModal('allergenReminderModal');
+}
+$('allergenReminderCloseBtn').addEventListener('click', closeAllergenReminderModal);
+$('allergenReminderXBtn').addEventListener('click', closeAllergenReminderModal);
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
   const lastTimes = allergenLastEatenTimes();
