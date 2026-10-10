@@ -61,6 +61,8 @@ let photoCache = {};
 let gePhotoState = { changed:false, data:null };
 let charts = {};
 let dataLoaded = false; // FIX: true only after the first Firestore snapshot for DATA has arrived
+let settingsLoaded = false;
+let weeklyBackupChecked = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -290,13 +292,14 @@ const firebaseConfig = {
   messagingSenderId: "40764754443",
   appId: "1:40764754443:web:c2bd607ddcdda9cfa5d50e"
 };
-let db = null, dataDocRef = null, settingsDocRef = null, fbReady = false;
+let db = null, dataDocRef = null, settingsDocRef = null, backupMetaRef = null, fbReady = false;
 try{
   if(typeof firebase === 'undefined') throw new Error('Firebase SDK did not load');
   firebase.initializeApp(firebaseConfig);
   db = firebase.firestore();
   dataDocRef = db.collection('ido').doc('data');
   settingsDocRef = db.collection('ido').doc('settings');
+  backupMetaRef = db.collection('ido').doc('backupMeta');
   fbReady = true;
 }catch(e){
   console.error('Firebase init failed:', e);
@@ -323,16 +326,19 @@ function initRealtimeSync(){
       refreshAll();
       dataLoaded = true; // FIX: only now is it safe for saveData() to push DATA back to Firestore
       if(migrated) saveData();
+      checkWeeklyBackup();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
 
     settingsDocRef.onSnapshot((snap)=>{
       if(snap.exists){ SETTINGS = snap.data(); }
+      settingsLoaded = true;
       $('setName').value = SETTINGS.name || 'עידו';
       $('setBirth').value = SETTINGS.birth || '';
       updateGAgeShow();
       refreshHeader();
       renderGrowthHistory();
       renderMilestoneList();
+      checkWeeklyBackup();
     }, (err)=>{ console.error(err); toast('בעיה בחיבור למסד הנתונים'); });
   }catch(e){
     console.error('Realtime sync setup failed:', e);
@@ -347,8 +353,28 @@ async function saveData(){
 }
 async function saveSettings(){
   if(!fbReady){ toast('אין חיבור למסד הנתונים'); return; }
+  if(!settingsLoaded){ toast('הנתונים עוד לא נטענו — נסו שוב בעוד רגע'); return; }
   try{ await settingsDocRef.set(SETTINGS); }
   catch(e){ toast('שגיאה בשמירה'); }
+}
+async function checkWeeklyBackup(){
+  if(weeklyBackupChecked || !dataLoaded || !settingsLoaded || !fbReady) return;
+  weeklyBackupChecked = true;
+  try{
+    const metaDoc = await backupMetaRef.get();
+    const lastDate = metaDoc.exists ? metaDoc.data().lastBackupDate : null;
+    const daysSince = lastDate ? (Date.now() - new Date(lastDate).getTime())/86400000 : Infinity;
+    if(daysSince < 7) return;
+    const now = new Date().toISOString();
+    await db.collection('ido_backups').doc(todayLocalStr()).set({
+      createdAt: now,
+      settings: SETTINGS,
+      data: DATA
+    });
+    await backupMetaRef.set({ lastBackupDate: now });
+  }catch(e){
+    console.error('Weekly backup failed:', e);
+  }
 }
 
 /* ---------- who am I ---------- */
@@ -376,6 +402,7 @@ function switchView(name){
   if(name==='stats') renderStats();
   if(name==='milestones') renderMilestoneList();
   if(name==='tastes'){ renderAllergenGrid(); renderTastesList(); }
+  if(name==='settings') renderAutoBackupsList();
 }
 document.querySelectorAll('nav.tabbar button').forEach(b=>{
   b.addEventListener('click', ()=>switchView(b.dataset.view));
@@ -1899,6 +1926,48 @@ $('exportBtn').addEventListener('click', ()=>{
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 });
+function downloadJSON(obj, filename){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+async function renderAutoBackupsList(){
+  if(!fbReady){ return; }
+  $('autoBackupsList').innerHTML = '<div class="empty-hint">טוען…</div>';
+  try{
+    const snap = await db.collection('ido_backups').orderBy('createdAt','desc').limit(10).get();
+    if(snap.empty){ $('autoBackupsList').innerHTML = '<div class="empty-hint">עוד אין גיבוי אוטומטי — הראשון יישמר תוך שבוע</div>'; return; }
+    const rows = [];
+    snap.forEach(doc=>{
+      const d = doc.data();
+      const events = (d.data && d.data.events || []).length;
+      const growth = (d.data && d.data.growth || []).length;
+      rows.push(`
+      <div class="tl-item editable" data-backup-id="${doc.id}">
+        <div class="tl-body">
+          <div class="tl-title">${fmtDateTime(d.createdAt)}</div>
+          <div class="tl-meta">${events} אירועים · ${growth} מדידות גדילה</div>
+        </div>
+        <div class="tl-edit-hint">${icon('download')} הורדה</div>
+      </div>`);
+    });
+    $('autoBackupsList').innerHTML = rows.join('');
+    document.querySelectorAll('#autoBackupsList .tl-item').forEach(el=>{
+      el.addEventListener('click', async ()=>{
+        const doc = await db.collection('ido_backups').doc(el.dataset.backupId).get();
+        if(!doc.exists) return;
+        const d = doc.data();
+        downloadJSON({ DATA: d.data, SETTINGS: d.settings }, `ido-backup-${el.dataset.backupId}.json`);
+      });
+    });
+  }catch(e){
+    console.error(e);
+    $('autoBackupsList').innerHTML = '<div class="empty-hint">שגיאה בטעינת הגיבויים</div>';
+  }
+}
 $('importBtn').addEventListener('click', ()=>{ $('importFile').value = ''; $('importFile').click(); });
 $('importFile').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
