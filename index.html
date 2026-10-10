@@ -161,6 +161,10 @@
       <button class="primary-btn" id="openTasteBtn" style="width:100%">+ הוספת טעימה חדשה</button>
     </div>
 
+    <h2 class="section-title"><span data-icon="barChart"></span> תזונה היום</h2>
+    <p class="pct-note" style="margin-top:-6px;" id="dailyNutritionNote">סיכום ערכים תזונתיים מאז הקימה הבוקר, כולל טעימות והאכלות (לפי סימילאק גולד פלוס שלב 2).</p>
+    <div class="card" id="dailyNutritionSummary"></div>
+
     <h2 class="section-title"><span data-icon="zap"></span> מעקב אלרגנים</h2>
     <p class="pct-note" style="margin-top:-6px;">היעד הוא 3 חשיפות לכל אלרגן. הספירה מתעדכנת אוטומטית לפי המאכלים שנרשמים למטה.</p>
     <div class="stat-grid allergen-grid" id="allergenGrid"></div>
@@ -222,6 +226,10 @@
     <div class="card">
       <div style="font-size:13px; font-weight:600; margin-bottom:8px;">החתלות ליום</div>
       <div class="chart-wrap" style="height:200px;"><canvas id="diaperStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">קלוריות יומיות</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="caloriesStatChart"></canvas></div>
     </div>
   </section>
 

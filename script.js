@@ -401,7 +401,7 @@ function switchView(name){
   if(name==='growth') renderGrowthChart();
   if(name==='stats') renderStats();
   if(name==='milestones') renderMilestoneList();
-  if(name==='tastes'){ renderAllergenGrid(); renderTastesList(); }
+  if(name==='tastes'){ renderDailyNutritionSummary(); renderAllergenGrid(); renderTastesList(); }
   if(name==='settings') renderAutoBackupsList();
 }
 document.querySelectorAll('nav.tabbar button').forEach(b=>{
@@ -547,9 +547,9 @@ function renderStatusStrip(){
   const avgSleepDayDuration = avgDailySleepDay!=null ? formatHM(avgDailySleepDay) : null;
   const avgSleepNightDuration = avgDailySleepNight!=null ? formatHM(avgDailySleepNight) : null;
 
-  const feedWindowStart = new Date();
-  feedWindowStart.setHours(6,0,0,0);
-  if(new Date() < feedWindowStart){ feedWindowStart.setDate(feedWindowStart.getDate()-1); }
+  const feedWindowStart = todayWindowStart();
+  const feedWindowLabel = 'מהקימה';
+  const totalKcalToday = Math.round(dailyNutritionTotal(feedWindowStart).kcal);
   const totalFeedToday = DATA.events
     .filter(e=>e.type==='feed' && new Date(e.time) >= feedWindowStart)
     .reduce((s,e)=>s+(e.ml||0),0);
@@ -560,7 +560,8 @@ function renderStatusStrip(){
     <div class="chip"><div class="label">${icon('sun')} משך שינה ממוצע ביום</div><div class="val">${avgSleepDayDuration||'—'}</div></div>
     <div class="chip"><div class="label">${icon('sun')} שעת קימה ממוצעת</div><div class="val">${avgWakeTime||'—'}</div></div>
     <div class="chip"><div class="label">${icon('moon')} שעת הרדמות ממוצעת בלילה</div><div class="val">${avgNightSleep||'—'}</div></div>
-    <div class="chip"><div class="label">${icon('bottle')} סה"כ אכילה היום</div><div class="val">${totalFeedToday} מ"ל</div><div class="label" style="margin-top:1px;">מ-6:00</div></div>
+    <div class="chip"><div class="label">${icon('bottle')} סה"כ אכילה היום</div><div class="val">${totalFeedToday} מ"ל</div><div class="label" style="margin-top:1px;">${feedWindowLabel}</div></div>
+    <div class="chip"><div class="label">${icon('zap')} קלוריות היום</div><div class="val">${totalKcalToday}</div><div class="label" style="margin-top:1px;">${feedWindowLabel}</div></div>
     <div class="chip"><div class="label">החתלה אחרונה</div><div class="val">${ld?fmtTime(ld.time):'—'}</div>${lp?`<div class="label" style="margin-top:1px;">${poopRelativeLabel(lp.time)}</div>`:''}</div>
     <div class="chip"><div class="label">האכלה אחרונה</div><div class="val">${lf?fmtTime(lf.time):'—'}</div>${lf?`<div class="label" style="margin-top:1px;">${lf.ml} מ"ל</div>`:''}</div>
     <div class="chip"><div class="label">מצב</div><div class="val">${asleep?icon('moon')+' ישן':icon('sun')+' ער'}</div>${statusTime?`<div class="label" style="margin-top:1px;">מ-${statusTime}</div>`:''}</div>
@@ -1054,6 +1055,51 @@ function categoryColorFor(name){
 const NUTRITION_FIELDS = [['kcal','קלוריות'],['protein','חלבון (ג׳)'],['carbs','פחמימות (ג׳)'],['fat','שומן (ג׳)'],['fiber','סיבים (ג׳)'],['iron','ברזל (מ״ג)'],['sugar','סוכר (ג׳)']];
 const EMPTY_NUTRITION = {kcal:0,protein:0,carbs:0,fat:0,fiber:0,iron:0,sugar:0};
 const UNIT_TO_GRAMS = { 'גרם':1, 'כפית':5, 'כף':15, 'כוס':240 };
+// Similac Gold Plus שלב 2, ל-100 מ"ל מוכן לשתייה (מקור: similac.co.il)
+const FORMULA_NUTRITION_PER_100ML = {kcal:67, protein:1.38, carbs:7.19, fat:3.61, fiber:0.25, iron:0.84, sugar:7.09};
+function feedEventNutrition(ev){
+  const ml = ev.ml || 0;
+  const total = {...EMPTY_NUTRITION};
+  Object.keys(total).forEach(k=>{ total[k] = (FORMULA_NUTRITION_PER_100ML[k]||0) * ml / 100; });
+  return total;
+}
+function dailyNutritionTotal(windowStart){
+  const total = {...EMPTY_NUTRITION};
+  DATA.events.filter(e=>e.type==='feed' && new Date(e.time) >= windowStart).forEach(e=>{
+    const n = feedEventNutrition(e);
+    Object.keys(total).forEach(k=>{ total[k]+=n[k]; });
+  });
+  DATA.tastes.filter(t=>new Date(t.time) >= windowStart).forEach(t=>{
+    const n = computeTasteNutrition(t);
+    Object.keys(total).forEach(k=>{ total[k]+=n[k]; });
+  });
+  return total;
+}
+function lastMorningWakeTime(){
+  const events = [...DATA.events].filter(e=>e.type==='sleep'||e.type==='wake').sort((a,b)=>new Date(a.time)-new Date(b.time));
+  let lastWake = null;
+  for(let i=0;i<events.length;i++){
+    const ev = events[i];
+    if(ev.type!=='wake') continue;
+    const evPeriod = ev.period || suggestPeriod(ev.time);
+    if(evPeriod!=='day') continue;
+    const prev = i>0 ? events[i-1] : null;
+    const prevPeriod = prev ? (prev.period || suggestPeriod(prev.time)) : null;
+    if(prev && prev.type==='sleep' && prevPeriod==='night'){
+      lastWake = ev.time;
+    }
+  }
+  return lastWake;
+}
+function todayWindowStart(){
+  const wake = lastMorningWakeTime();
+  if(wake) return new Date(wake);
+  // fallback for when there's no clear morning-wake event yet (e.g. a fresh app)
+  const start = new Date();
+  start.setHours(6,0,0,0);
+  if(new Date() < start){ start.setDate(start.getDate()-1); }
+  return start;
+}
 function allFoodCategories(){
   const allergenOverrides = DATA.foodAllergenOverrides || {};
   const nutritionOverrides = DATA.foodNutritionOverrides || {};
@@ -1530,6 +1576,16 @@ $('openFoodManagerBtn').addEventListener('click', ()=>{
   openModal('foodManagerModal');
 });
 $('foodManagerXBtn').addEventListener('click', ()=>closeModal('foodManagerModal'));
+function renderDailyNutritionSummary(){
+  const windowStart = todayWindowStart();
+  const total = dailyNutritionTotal(windowStart);
+  $('dailyNutritionNote').textContent = `סיכום ערכים תזונתיים מאז הקימה הבוקר, כולל טעימות והאכלות (לפי סימילאק גולד פלוס שלב 2).`;
+  $('dailyNutritionSummary').innerHTML = NUTRITION_FIELDS.map(([key,label])=>`
+    <div class="food-manager-row">
+      <span class="food-manager-name">${label}</span>
+      <span class="food-manager-name" style="flex:0; font-weight:600;">${key==='kcal'?Math.round(total[key]):total[key].toFixed(1)}</span>
+    </div>`).join('');
+}
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
   const lastTimes = allergenLastEatenTimes();
@@ -2049,16 +2105,26 @@ function renderStats(){
   const diaperByDay = days.map(d=>{
     return DATA.events.filter(e=>e.type==='diaper' && afterTrackingStart(e.time) && new Date(e.time).toDateString()===d.toDateString()).length;
   });
+  const caloriesByDay = days.map(d=>{
+    let kcal = 0;
+    DATA.events.filter(e=>e.type==='feed' && afterTrackingStart(e.time) && new Date(e.time).toDateString()===d.toDateString())
+      .forEach(e=>{ kcal += feedEventNutrition(e).kcal; });
+    DATA.tastes.filter(t=>new Date(t.time).toDateString()===d.toDateString())
+      .forEach(t=>{ kcal += computeTasteNutrition(t).kcal; });
+    return kcal;
+  });
 
   const avgSleep = (sleepByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday).toFixed(1);
   const avgFeed = Math.round(feedByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday);
   const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
+  const avgCalories = Math.round(caloriesByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday);
   const totalMilestones = DATA.milestones.length;
 
   $('statCards').innerHTML = `
     <div class="stat-card"><div class="n num">${avgSleep}</div><div class="l">שעות שינה, ממוצע יומי</div></div>
     <div class="stat-card"><div class="n num">${avgFeed}</div><div class="l">מ"ל אכילה, ממוצע יומי</div></div>
     <div class="stat-card"><div class="n num">${avgDiaper}</div><div class="l">החתלות ליום, ממוצע</div></div>
+    <div class="stat-card"><div class="n num">${avgCalories}</div><div class="l">קלוריות ליום, ממוצע</div></div>
     <div class="stat-card"><div class="n num">${totalMilestones}</div><div class="l">אבני דרך עד כה</div></div>
   `;
 
@@ -2079,6 +2145,12 @@ function renderStats(){
     type:'bar',
     data:{ labels: dayLabels, datasets:[{ data: diaperByDay, backgroundColor:'#D98E86', borderRadius:6 }] },
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ title:{display:true,text:'מספר'}, grid:{color:CHART_GRID} }, x:{ grid:{display:false} } } }
+  });
+  if(charts.caloriesStat) charts.caloriesStat.destroy();
+  charts.caloriesStat = new Chart($('caloriesStatChart'), {
+    type:'bar',
+    data:{ labels: dayLabels, datasets:[{ data: caloriesByDay.map(v=>Math.round(v)), backgroundColor:'#B96A62', borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ title:{display:true,text:'קלוריות'}, grid:{color:CHART_GRID} }, x:{ grid:{display:false} } } }
   });
   renderWindowStats(windowStatsRange);
 }
@@ -2351,7 +2423,7 @@ function refreshAll(){
   if(document.getElementById('view-growth').classList.contains('active')) renderGrowthChart();
   if(document.getElementById('view-stats').classList.contains('active')) renderStats();
   if(document.getElementById('view-milestones').classList.contains('active')) renderMilestoneList();
-  if(document.getElementById('view-tastes').classList.contains('active')){ renderAllergenGrid(); renderTastesList(); }
+  if(document.getElementById('view-tastes').classList.contains('active')){ renderDailyNutritionSummary(); renderAllergenGrid(); renderTastesList(); }
   checkAllergenReminder();
 }
 
