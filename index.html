@@ -177,6 +177,29 @@
 
   <!-- STATS -->
   <section class="view" id="view-stats">
+    <h2 class="section-title"><span data-icon="barChart"></span> סטטיסטיקה</h2>
+    <div class="growth-tabs" id="statsRangeSeg">
+      <button class="active" data-range="7">7 ימים</button>
+      <button data-range="30">30 יום</button>
+    </div>
+    <div class="stat-grid" id="statCards" style="margin-top:12px;"></div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">שעות שינה ליום</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="sleepStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">כמות אכילה יומית (מ״ל)</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="feedStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">החתלות ליום</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="diaperStatChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">קלוריות יומיות</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="caloriesStatChart"></canvas></div>
+    </div>
+
     <h2 class="section-title"><span data-icon="history"></span> חלונות שינה וערות</h2>
     <div class="card">
       <div class="growth-tabs" id="windowRangeSeg">
@@ -211,25 +234,6 @@
     <div class="card">
       <div style="font-size:13px; font-weight:600; margin-bottom:8px;"><span data-icon="moon"></span> מגמת חלונות שינה בלילה (שעות)</div>
       <div class="chart-wrap" style="height:200px;"><canvas id="sleepNightTrendChart"></canvas></div>
-    </div>
-
-    <h2 class="section-title"><span data-icon="barChart"></span> סטטיסטיקה (7 ימים אחרונים)</h2>
-    <div class="stat-grid" id="statCards"></div>
-    <div class="card">
-      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">שעות שינה ליום</div>
-      <div class="chart-wrap" style="height:200px;"><canvas id="sleepStatChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">כמות אכילה יומית (מ״ל)</div>
-      <div class="chart-wrap" style="height:200px;"><canvas id="feedStatChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">החתלות ליום</div>
-      <div class="chart-wrap" style="height:200px;"><canvas id="diaperStatChart"></canvas></div>
-    </div>
-    <div class="card">
-      <div style="font-size:13px; font-weight:600; margin-bottom:8px;">קלוריות יומיות</div>
-      <div class="chart-wrap" style="height:200px;"><canvas id="caloriesStatChart"></canvas></div>
     </div>
   </section>
 

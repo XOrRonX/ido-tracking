@@ -54,6 +54,7 @@ let growthMetric = 'weight';
 let diaperTypeVal = 'pee';
 let sleepPeriodVal = 'day';
 let windowStatsRange = 7;
+let statsRange = 7;
 let timelineCycleStart = null; // null = auto-track the current (live) night-to-night cycle
 let windowsCycleStart = null; // null = auto-track the current (live) night-to-night cycle
 let pendingGrowthPhoto = null;
@@ -2072,13 +2073,14 @@ function renderGrowthChart(){
 }
 
 /* ---------- stats ---------- */
-function renderStats(){
+function renderStats(rangeDays){
+  rangeDays = rangeDays || statsRange;
   const days = [];
-  for(let i=6;i>=0;i--){
+  for(let i=rangeDays-1;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
     days.push(d);
   }
-  const dayLabels = days.map(d=>d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'}));
+  const dayLabels = days.map(d=> rangeDays>7 ? d.toLocaleDateString('he-IL',{day:'2-digit', month:'2-digit'}) : d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'}));
 
   const validDays = days.filter(d=>d >= TRACKING_START).length || 1;
   const daysExcludingToday = days.slice(0, -1); // today is always partial, so averages below skip it
@@ -2118,14 +2120,12 @@ function renderStats(){
   const avgFeed = Math.round(feedByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday);
   const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
   const avgCalories = Math.round(caloriesByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday);
-  const totalMilestones = DATA.milestones.length;
 
   $('statCards').innerHTML = `
     <div class="stat-card"><div class="n num">${avgSleep}</div><div class="l">שעות שינה, ממוצע יומי</div></div>
     <div class="stat-card"><div class="n num">${avgFeed}</div><div class="l">מ"ל אכילה, ממוצע יומי</div></div>
     <div class="stat-card"><div class="n num">${avgDiaper}</div><div class="l">החתלות ליום, ממוצע</div></div>
     <div class="stat-card"><div class="n num">${avgCalories}</div><div class="l">קלוריות ליום, ממוצע</div></div>
-    <div class="stat-card"><div class="n num">${totalMilestones}</div><div class="l">אבני דרך עד כה</div></div>
   `;
 
   if(charts.sleepStat) charts.sleepStat.destroy();
@@ -2177,6 +2177,14 @@ document.querySelectorAll('#windowRangeSeg button').forEach(b=>{
     b.classList.add('active');
     windowStatsRange = Number(b.dataset.range);
     renderWindowStats(windowStatsRange);
+  });
+});
+document.querySelectorAll('#statsRangeSeg button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#statsRangeSeg button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    statsRange = Number(b.dataset.range);
+    renderStats(statsRange);
   });
 });
 function formatHM(hours){
