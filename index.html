@@ -164,6 +164,7 @@
     <h2 class="section-title"><span data-icon="zap"></span> מעקב אלרגנים</h2>
     <p class="pct-note" style="margin-top:-6px;">היעד הוא 3 חשיפות לכל אלרגן. הספירה מתעדכנת אוטומטית לפי המאכלים שנרשמים למטה.</p>
     <div class="stat-grid allergen-grid" id="allergenGrid"></div>
+    <button type="button" class="ghost-btn" id="openFoodManagerBtn" style="width:100%; margin-bottom:12px;"><span data-icon="pencil"></span> עריכת קישורי אלרגנים למאכלים</button>
 
     <h2 class="section-title"><span data-icon="history"></span> היסטוריה</h2>
     <div id="tasteCategoryLegend" class="taste-legend"></div>
@@ -357,7 +358,9 @@
     <div class="modal-head"><h3 id="tasteModalTitle"><span data-icon="spoon"></span> טעימה חדשה</h3><button class="close" data-close="tasteModal">×</button></div>
     <div class="field">
       <label>מה טעם? (אפשר לבחור כמה)</label>
-      <div id="tasteSelectedChips" class="milestone-chips"></div>
+      <div id="tasteSelectedChips" class="taste-selected-list"></div>
+      <button type="button" class="ghost-btn" id="tasteMergeGroupBtn" style="display:none; width:100%; margin-top:8px;">קיבוץ המאכלים המסומנים לכמות משותפת</button>
+      <p class="pct-note" style="margin:6px 0 0;">אם לא מציינים כמות למאכל מסוים, זה פשוט אומר שהכמות שולית. למאכלים שנאכלו ביחד (כמו פירות בסמוצ'י) ואי אפשר לדעת את הכמות של כל אחד בנפרד — אפשר לסמן כמה מאכלים בתיבה ליד כל אחד ואז ללחוץ על הכפתור שמופיע, כדי לתת להם כמות אחת משותפת.</p>
     </div>
     <p class="pct-note" style="margin-top:-4px;">מאכלים עם רקע ירוק כבר נטעמו בעבר</p>
     <div id="tasteFoodPicker"></div>
@@ -370,6 +373,10 @@
       <select id="tOtherCategorySelect"></select>
       <input type="text" id="tOtherNewCategoryInput" placeholder="שם הקטגוריה החדשה" style="display:none; margin-top:8px;">
     </div>
+    <div class="field">
+      <label>האם זה מכיל אלרגן? (רשות)</label>
+      <select id="tOtherAllergenSelect"></select>
+    </div>
     <button type="button" class="ghost-btn" id="tOtherAddBtn" style="width:100%;">הוספת מאכל</button>
     <form class="form-grid" id="tasteForm">
       <input type="hidden" id="tEditId" value="">
@@ -378,6 +385,32 @@
       <button type="submit" class="primary-btn">שמירה</button>
       <button type="button" class="ghost-btn" id="tDeleteBtn" style="display:none; color:var(--rose-deep); border-color:var(--rose-deep);">מחיקת רשומה</button>
     </form>
+  </div>
+</div>
+
+<!-- FOOD ALLERGEN MANAGER MODAL -->
+<div class="modal-overlay" id="foodManagerModal">
+  <div class="modal">
+    <div class="modal-head"><h3><span data-icon="pencil"></span> קישורי אלרגנים למאכלים</h3><button type="button" class="close" id="foodManagerXBtn">×</button></div>
+    <p class="pct-note" style="margin-top:0;">שינוי כאן יעדכן אוטומטית גם טעימות קודמות עם אותו מאכל. לחצו על העיפרון ליד מאכל כדי לערוך גם ערכים תזונתיים.</p>
+    <div id="foodManagerList"></div>
+  </div>
+</div>
+
+<!-- FOOD NUTRITION DETAIL MODAL -->
+<div class="modal-overlay" id="foodDetailModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="foodDetailTitle"><span data-icon="pencil"></span> מאכל</h3><button type="button" class="close" id="foodDetailXBtn">×</button></div>
+    <p class="pct-note" style="margin-top:0;">ערכים משוערים ל-100 גרם, לצורך התמצאות כללית בלבד.</p>
+    <input type="hidden" id="foodDetailName" value="">
+    <div class="field">
+      <label><span data-icon="camera"></span> זיהוי ערכים מתווית תזונה (רשות)</label>
+      <button type="button" class="ghost-btn" id="foodDetailPhotoTriggerBtn" style="width:100%;"><span data-icon="camera"></span> העלאת תמונת תווית</button>
+      <input type="file" id="foodDetailPhotoInput" accept="image/*" style="display:none;">
+      <div id="foodDetailOcrStatus" class="pct-note" style="display:none;"></div>
+    </div>
+    <div class="form-grid" id="foodDetailFields"></div>
+    <button type="button" class="primary-btn" id="foodDetailSaveBtn" style="width:100%; margin-top:12px;">שמירה</button>
   </div>
 </div>
 

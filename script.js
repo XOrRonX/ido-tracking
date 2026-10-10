@@ -47,7 +47,7 @@ function growthPercentiles(entry){
 }
 
 /* ---------- state ---------- */
-let DATA = { events: [], growth: [], milestones: [], tastes: [], customFoods: [] };
+let DATA = { events: [], growth: [], milestones: [], tastes: [], customFoods: [], foodAllergenOverrides: {}, foodNutritionOverrides: {} };
 let SETTINGS = { name:"עידו", birth: null };
 let ME = localStorage.getItem('ido_who') || "";
 let growthMetric = 'weight';
@@ -310,7 +310,7 @@ function initRealtimeSync(){
   try{
     dataDocRef.onSnapshot((snap)=>{
       const d = snap.exists ? snap.data() : {};
-      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[], customFoods: d.customFoods||[] };
+      DATA = { events: d.events||[], growth: d.growth||[], milestones: d.milestones||[], tastes: d.tastes||[], customFoods: d.customFoods||[], foodAllergenOverrides: d.foodAllergenOverrides||{}, foodNutritionOverrides: d.foodNutritionOverrides||{} };
       let migrated = false;
       DATA.events.forEach(ev=>{
         if(ev.type==='supplement' && !ev.items){
@@ -976,28 +976,64 @@ const ALLERGENS = [
   { key:'fish', label:'דגים' },
   { key:'sesame', label:'שומשום' }
 ];
+// nutrition values are approximate averages per 100g, for general orientation only
+function n(kcal,protein,carbs,fat,fiber,iron,sugar){ return {kcal,protein,carbs,fat,fiber,iron,sugar}; }
 const FOOD_CATEGORIES = [
   { name:'פירות', foods:[
-    {name:'בננה'}, {name:'אבוקדו'}, {name:'תפוח'}, {name:'אגס'}, {name:'מנגו'},
-    {name:'אבטיח'}, {name:'תות'}, {name:'אפרסק'}, {name:'משמש'}, {name:'קיווי'}, {name:'ענבים'}
+    {name:'בננה', nutrition:n(89,1.1,23,0.3,2.6,0.3,12)},
+    {name:'אבוקדו', nutrition:n(160,2,9,15,7,0.6,0.7)},
+    {name:'תפוח', nutrition:n(52,0.3,14,0.2,2.4,0.1,10)},
+    {name:'אגס', nutrition:n(57,0.4,15,0.1,3.1,0.2,10)},
+    {name:'מנגו', nutrition:n(60,0.8,15,0.4,1.6,0.2,14)},
+    {name:'אבטיח', nutrition:n(30,0.6,8,0.2,0.4,0.2,6)},
+    {name:'תות', nutrition:n(32,0.7,8,0.3,2,0.4,4.9)},
+    {name:'אפרסק', nutrition:n(39,0.9,10,0.3,1.5,0.3,8.4)},
+    {name:'משמש', nutrition:n(48,1.4,11,0.4,2,0.4,9.2)},
+    {name:'קיווי', nutrition:n(61,1.1,15,0.5,3,0.3,9)},
+    {name:'ענבים', nutrition:n(69,0.7,18,0.2,0.9,0.4,16)}
   ]},
   { name:'ירקות', foods:[
-    {name:'בטטה'}, {name:'דלעת'}, {name:'גזר'}, {name:'ברוקולי'}, {name:'כרובית'},
-    {name:'קישוא'}, {name:'אפונה'}, {name:'תירס'}, {name:'תפוח אדמה'}, {name:'סלק'}
+    {name:'בטטה', nutrition:n(86,1.6,20,0.1,3,0.6,4.2)},
+    {name:'דלעת', nutrition:n(26,1,7,0.1,0.5,0.8,2.8)},
+    {name:'גזר', nutrition:n(41,0.9,10,0.2,2.8,0.3,4.7)},
+    {name:'ברוקולי', nutrition:n(34,2.8,7,0.4,2.6,0.7,1.7)},
+    {name:'כרובית', nutrition:n(25,1.9,5,0.3,2,0.4,1.9)},
+    {name:'קישוא', nutrition:n(17,1.2,3.1,0.3,1,0.4,2.5)},
+    {name:'אפונה', nutrition:n(81,5.4,14,0.4,5.7,1.5,5.7)},
+    {name:'תירס', nutrition:n(86,3.3,19,1.2,2.7,0.5,3.2)},
+    {name:'תפוח אדמה', nutrition:n(77,2,17,0.1,2.2,0.8,0.8)},
+    {name:'סלק', nutrition:n(43,1.6,10,0.2,2.8,0.8,7)}
   ]},
   { name:'דגנים ופחמימות', foods:[
-    {name:'אורז'}, {name:'שיבולת שועל'}, {name:'קינואה'}, {name:'פסטה', allergen:'wheat'}, {name:'לחם', allergen:'wheat'}
+    {name:'אורז', nutrition:n(130,2.7,28,0.3,0.4,0.2,0.1)},
+    {name:'שיבולת שועל', nutrition:n(68,2.4,12,1.4,1.7,0.9,0.3)},
+    {name:'קינואה', nutrition:n(120,4.4,21,1.9,2.8,1.5,0.9)},
+    {name:'פסטה', allergen:'wheat', nutrition:n(131,5,25,1.1,1.8,0.9,0.6)},
+    {name:'לחם', allergen:'wheat', nutrition:n(265,9,49,3.2,2.7,3.6,5)}
   ]},
   { name:'חלבונים', foods:[
-    {name:'עוף'}, {name:'בקר'}, {name:'הודו'}, {name:'עדשים'}, {name:'חומוס'}, {name:'טופו', allergen:'soy'}
+    {name:'עוף', nutrition:n(165,31,0,3.6,0,1,0)},
+    {name:'בקר', nutrition:n(217,26,0,12,0,2.6,0)},
+    {name:'הודו', nutrition:n(135,30,0,1,0,1.4,0)},
+    {name:'עדשים', nutrition:n(116,9,20,0.4,7.9,3.3,1.8)},
+    {name:'חומוס', nutrition:n(164,8.9,27,2.6,7.6,2.9,4.8)},
+    {name:'טופו', allergen:'soy', nutrition:n(76,8,1.9,4.8,0.3,5.4,0.6)}
   ]},
   { name:'מוצרי חלב', foods:[
-    {name:'יוגורט', allergen:'milk'}, {name:'גבינה צהובה', allergen:'milk'}, {name:'קוטג׳', allergen:'milk'}
+    {name:'יוגורט', allergen:'milk', nutrition:n(61,3.5,4.7,3.3,0,0.1,4.7)},
+    {name:'גבינה צהובה', allergen:'milk', nutrition:n(402,25,1.3,33,0,0.7,0.5)},
+    {name:'קוטג׳', allergen:'milk', nutrition:n(98,11,3.4,4.3,0,0.1,2.7)}
   ]},
   { name:'אלרגנים מומלצים לחשיפה מוקדמת', foods:[
-    {name:'ביצה', allergen:'egg'}, {name:'חמאת בוטנים', allergen:'peanut'}, {name:'טחינה', allergen:'sesame'},
-    {name:'שקדים טחונים', allergen:'treenuts'}, {name:'קשיו טחון', allergen:'treenuts'}, {name:'אגוזי מלך טחונים', allergen:'treenuts'},
-    {name:'חלב פרה', allergen:'milk'}, {name:'דג', allergen:'fish'}, {name:'סויה', allergen:'soy'}
+    {name:'ביצה', allergen:'egg', nutrition:n(155,13,1.1,11,0,1.8,1.1)},
+    {name:'חמאת בוטנים', allergen:'peanut', nutrition:n(588,25,20,50,6,1.9,9)},
+    {name:'טחינה', allergen:'sesame', nutrition:n(595,17,21,54,9,4,0.5)},
+    {name:'שקדים טחונים', allergen:'treenuts', nutrition:n(579,21,22,50,12.5,3.7,4.4)},
+    {name:'קשיו טחון', allergen:'treenuts', nutrition:n(553,18,30,44,3.3,6.7,5.9)},
+    {name:'אגוזי מלך טחונים', allergen:'treenuts', nutrition:n(654,15,14,65,6.7,2.9,2.6)},
+    {name:'חלב פרה', allergen:'milk', nutrition:n(42,3.4,5,1,0,0,5)},
+    {name:'דג', allergen:'fish', nutrition:n(206,22,0,12,0,0.3,0)},
+    {name:'סויה', allergen:'soy', nutrition:n(173,16.6,9.9,9,6,5.1,3)}
   ]}
 ];
 const CATEGORY_COLORS = {
@@ -1015,12 +1051,24 @@ function categoryColorFor(name){
   for(let i=0;i<name.length;i++) hash = (hash*31 + name.charCodeAt(i)) % CUSTOM_CATEGORY_PALETTE.length;
   return CUSTOM_CATEGORY_PALETTE[Math.abs(hash)%CUSTOM_CATEGORY_PALETTE.length];
 }
+const NUTRITION_FIELDS = [['kcal','קלוריות'],['protein','חלבון (ג׳)'],['carbs','פחמימות (ג׳)'],['fat','שומן (ג׳)'],['fiber','סיבים (ג׳)'],['iron','ברזל (מ״ג)'],['sugar','סוכר (ג׳)']];
+const EMPTY_NUTRITION = {kcal:0,protein:0,carbs:0,fat:0,fiber:0,iron:0,sugar:0};
+const UNIT_TO_GRAMS = { 'גרם':1, 'כפית':5, 'כף':15, 'כוס':240 };
 function allFoodCategories(){
-  const merged = FOOD_CATEGORIES.map(cat=>({ name:cat.name, foods:[...cat.foods] }));
+  const allergenOverrides = DATA.foodAllergenOverrides || {};
+  const nutritionOverrides = DATA.foodNutritionOverrides || {};
+  const merged = FOOD_CATEGORIES.map(cat=>({
+    name:cat.name,
+    foods: cat.foods.map(f=>{
+      const allergen = (f.name in allergenOverrides) ? allergenOverrides[f.name] : f.allergen;
+      const nutrition = nutritionOverrides[f.name] || f.nutrition || EMPTY_NUTRITION;
+      return { ...f, allergen, nutrition };
+    })
+  }));
   (DATA.customFoods||[]).forEach(cf=>{
     let cat = merged.find(c=>c.name===cf.category);
     if(!cat){ cat = { name:cf.category, foods:[] }; merged.push(cat); }
-    if(!cat.foods.some(f=>f.name===cf.name)) cat.foods.push({ name:cf.name, allergen:cf.allergen||null });
+    if(!cat.foods.some(f=>f.name===cf.name)) cat.foods.push({ name:cf.name, allergen:cf.allergen||null, nutrition: cf.nutrition || EMPTY_NUTRITION });
   });
   return merged;
 }
@@ -1038,6 +1086,7 @@ function findFoodPreset(name){
   return null;
 }
 let tasteSelectedFoods = [];
+let tasteGroups = []; // [{id, amount, unit}] shared quantities for foods eaten together (e.g. a smoothie)
 function everTastedFoodNames(){
   const set = new Set();
   DATA.tastes.forEach(t=>(t.foods||[]).forEach(f=>set.add(f.name)));
@@ -1053,6 +1102,10 @@ function populateOtherCategorySelect(){
 $('tOtherCategorySelect').addEventListener('change', ()=>{
   $('tOtherNewCategoryInput').style.display = $('tOtherCategorySelect').value==='__new__' ? 'block' : 'none';
 });
+function populateOtherAllergenSelect(){
+  $('tOtherAllergenSelect').innerHTML = `<option value="">ללא אלרגן</option>` + ALLERGENS.map(a=>`<option value="${a.key}">${a.label}</option>`).join('');
+  $('tOtherAllergenSelect').value = '';
+}
 function renderTasteFoodPicker(){
   const tried = everTastedFoodNames();
   $('tasteFoodPicker').innerHTML = allFoodCategories().map(cat=>`
@@ -1064,16 +1117,20 @@ function renderTasteFoodPicker(){
   });
   syncTasteFoodPickerSelection();
   populateOtherCategorySelect();
+  populateOtherAllergenSelect();
 }
 function toggleTasteFood(name){
   const idx = tasteSelectedFoods.findIndex(f=>f.name===name);
-  if(idx>=0){ tasteSelectedFoods.splice(idx,1); }
+  if(idx>=0){ tasteSelectedFoods.splice(idx,1); cleanupEmptyTasteGroups(); }
   else{
     const preset = findFoodPreset(name);
-    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null });
+    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null, amount:null, unit:'גרם', groupId:null });
   }
   renderTasteSelectedChips();
   syncTasteFoodPickerSelection();
+}
+function cleanupEmptyTasteGroups(){
+  tasteGroups = tasteGroups.filter(g=>tasteSelectedFoods.some(f=>f.groupId===g.id));
 }
 function syncTasteFoodPickerSelection(){
   document.querySelectorAll('#tasteFoodPicker .m-chip').forEach(c=>{
@@ -1083,19 +1140,111 @@ function syncTasteFoodPickerSelection(){
 function renderTasteSelectedChips(){
   if(tasteSelectedFoods.length===0){
     $('tasteSelectedChips').innerHTML = `<span class="empty-hint" style="padding:0;">עדיין לא נבחרו מאכלים</span>`;
+    $('tasteMergeGroupBtn').style.display = 'none';
     return;
   }
-  $('tasteSelectedChips').innerHTML = tasteSelectedFoods.map((f,i)=>
-    `<div class="m-chip selected" data-i="${i}">${f.name} ×</div>`
+  const ungrouped = tasteSelectedFoods.map((f,i)=>({...f,_i:i})).filter(f=>!f.groupId);
+  const ungroupedRows = ungrouped.map(f=>`
+    <div class="taste-selected-row">
+      <input type="checkbox" class="taste-group-check" data-i="${f._i}" title="סמנו למיזוג עם מאכלים נוספים לכמות משותפת">
+      <button type="button" class="taste-selected-remove" data-i="${f._i}">×</button>
+      <span class="taste-selected-name">${f.name}</span>
+      <input type="number" min="0" step="0.5" class="taste-amount-input" data-i="${f._i}" placeholder="כמות (לא חובה)" value="${f.amount!=null?f.amount:''}">
+      <select class="taste-unit-select" data-i="${f._i}">
+        ${Object.keys(UNIT_TO_GRAMS).map(u=>`<option value="${u}"${f.unit===u?' selected':''}>${u}</option>`).join('')}
+      </select>
+    </div>`
   ).join('');
-  document.querySelectorAll('#tasteSelectedChips .m-chip').forEach(el=>{
+  const groupRows = tasteGroups.map(g=>{
+    const members = tasteSelectedFoods.map((f,i)=>({...f,_i:i})).filter(f=>f.groupId===g.id);
+    if(members.length===0) return '';
+    const names = members.map(m=>m.name).join(', ');
+    return `
+    <div class="taste-group-row" data-group-id="${g.id}">
+      <div class="taste-group-names">${names} <span class="taste-group-badge">קבוצה</span>
+        <button type="button" class="taste-group-remove" data-group-id="${g.id}">× הסרת הקבוצה</button>
+      </div>
+      <div class="taste-group-controls">
+        <input type="number" min="0" step="0.5" class="taste-group-amount-input" data-group-id="${g.id}" placeholder="כמות כוללת ביחד" value="${g.amount!=null?g.amount:''}">
+        <select class="taste-group-unit-select" data-group-id="${g.id}">
+          ${Object.keys(UNIT_TO_GRAMS).map(u=>`<option value="${u}"${g.unit===u?' selected':''}>${u}</option>`).join('')}
+        </select>
+        <button type="button" class="ghost-btn taste-group-ungroup" data-group-id="${g.id}">פירוק</button>
+      </div>
+    </div>`;
+  }).join('');
+  $('tasteSelectedChips').innerHTML = ungroupedRows + groupRows;
+
+  document.querySelectorAll('#tasteSelectedChips .taste-selected-remove').forEach(el=>{
     el.addEventListener('click', ()=>{
       tasteSelectedFoods.splice(Number(el.dataset.i), 1);
+      cleanupEmptyTasteGroups();
       renderTasteSelectedChips();
       syncTasteFoodPickerSelection();
     });
   });
+  document.querySelectorAll('#tasteSelectedChips .taste-amount-input').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const v = el.value.trim();
+      tasteSelectedFoods[Number(el.dataset.i)].amount = v==='' ? null : Number(v);
+    });
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-unit-select').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      tasteSelectedFoods[Number(el.dataset.i)].unit = el.value;
+    });
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-group-check').forEach(el=>{
+    el.addEventListener('change', updateTasteMergeButtonVisibility);
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-group-amount-input').forEach(el=>{
+    el.addEventListener('input', ()=>{
+      const v = el.value.trim();
+      const g = tasteGroups.find(g=>g.id===el.dataset.groupId);
+      if(g) g.amount = v==='' ? null : Number(v);
+    });
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-group-unit-select').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const g = tasteGroups.find(g=>g.id===el.dataset.groupId);
+      if(g) g.unit = el.value;
+    });
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-group-ungroup').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const gid = el.dataset.groupId;
+      tasteSelectedFoods.forEach(f=>{ if(f.groupId===gid){ f.groupId=null; f.amount=null; f.unit='גרם'; } });
+      tasteGroups = tasteGroups.filter(g=>g.id!==gid);
+      renderTasteSelectedChips();
+    });
+  });
+  document.querySelectorAll('#tasteSelectedChips .taste-group-remove').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const gid = el.dataset.groupId;
+      tasteSelectedFoods = tasteSelectedFoods.filter(f=>f.groupId!==gid);
+      tasteGroups = tasteGroups.filter(g=>g.id!==gid);
+      renderTasteSelectedChips();
+      syncTasteFoodPickerSelection();
+    });
+  });
+  updateTasteMergeButtonVisibility();
 }
+function updateTasteMergeButtonVisibility(){
+  const checkedCount = document.querySelectorAll('#tasteSelectedChips .taste-group-check:checked').length;
+  $('tasteMergeGroupBtn').style.display = checkedCount>=2 ? 'block' : 'none';
+}
+$('tasteMergeGroupBtn').addEventListener('click', ()=>{
+  const checked = [...document.querySelectorAll('#tasteSelectedChips .taste-group-check:checked')].map(el=>Number(el.dataset.i));
+  if(checked.length<2) return;
+  const gid = uid();
+  tasteGroups.push({ id:gid, amount:null, unit:'גרם' });
+  checked.forEach(i=>{
+    tasteSelectedFoods[i].groupId = gid;
+    tasteSelectedFoods[i].amount = null;
+    tasteSelectedFoods[i].unit = null;
+  });
+  renderTasteSelectedChips();
+});
 async function addOtherTasteFood(){
   const name = $('tOtherInput').value.trim();
   if(!name){ toast('הזינו שם מאכל'); return; }
@@ -1106,16 +1255,17 @@ async function addOtherTasteFood(){
       category = $('tOtherNewCategoryInput').value.trim();
       if(!category){ toast('הזינו שם לקטגוריה, או בחרו קטגוריה קיימת'); return; }
     }
+    const allergen = $('tOtherAllergenSelect').value || null;
     DATA.customFoods = DATA.customFoods || [];
     if(!DATA.customFoods.some(f=>f.name===name)){
-      DATA.customFoods.push({ name, category, allergen: null });
+      DATA.customFoods.push({ name, category, allergen });
       await saveData();
     }
     renderTasteFoodPicker();
   }
   if(!tasteSelectedFoods.some(f=>f.name===name)){
     const preset = findFoodPreset(name);
-    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null });
+    tasteSelectedFoods.push({ name, allergen: preset && preset.allergen ? preset.allergen : null, amount:null, unit:'גרם', groupId:null });
     renderTasteSelectedChips();
     syncTasteFoodPickerSelection();
   }
@@ -1134,6 +1284,7 @@ function openTasteModal(editId){
     $('tasteModalTitle').innerHTML = icon('spoon')+' עריכת טעימה';
     $('tEditId').value = editId;
     tasteSelectedFoods = (t.foods||[]).map(f=>({...f}));
+    tasteGroups = (t.foodGroups||[]).map(g=>({...g}));
     $('tNote').value = t.note || '';
     const d = new Date(t.time); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
     $('tTime').value = d.toISOString().slice(0,16);
@@ -1142,6 +1293,7 @@ function openTasteModal(editId){
     $('tasteModalTitle').innerHTML = icon('spoon')+' טעימה חדשה';
     $('tEditId').value = '';
     tasteSelectedFoods = [];
+    tasteGroups = [];
     $('tNote').value = '';
     $('tTime').value = nowLocalInput();
     $('tDeleteBtn').style.display = 'none';
@@ -1154,14 +1306,15 @@ $('tasteForm').addEventListener('submit', async (e)=>{
   e.preventDefault();
   if(tasteSelectedFoods.length===0){ toast('בחרו לפחות מאכל אחד'); return; }
   const editId = $('tEditId').value;
-  const foods = tasteSelectedFoods.map(f=>({ name:f.name, allergen: f.allergen||null }));
+  const foods = tasteSelectedFoods.map(f=>({ name:f.name, allergen: f.allergen||null, amount: f.amount!=null?f.amount:null, unit: f.unit||null, groupId: f.groupId||null }));
+  const foodGroups = tasteGroups.map(g=>({ id:g.id, amount: g.amount!=null?g.amount:null, unit: g.unit||null }));
   const note = $('tNote').value.trim();
   const time = new Date($('tTime').value).toISOString();
   if(editId){
     const t = DATA.tastes.find(x=>x.id===editId);
-    if(t){ t.foods = foods; t.note = note; t.time = time; t.editedBy = ME||''; }
+    if(t){ t.foods = foods; t.foodGroups = foodGroups; t.note = note; t.time = time; t.editedBy = ME||''; }
   } else {
-    DATA.tastes.push({ id:uid(), foods, note, time, by:ME||'' });
+    DATA.tastes.push({ id:uid(), foods, foodGroups, note, time, by:ME||'' });
   }
   await saveData();
   closeModal('tasteModal');
@@ -1238,6 +1391,145 @@ function closeAllergenReminderModal(){
 }
 $('allergenReminderCloseBtn').addEventListener('click', closeAllergenReminderModal);
 $('allergenReminderXBtn').addEventListener('click', closeAllergenReminderModal);
+function renderFoodManagerList(){
+  const cats = allFoodCategories();
+  $('foodManagerList').innerHTML = cats.map(cat=>`
+    <div class="taste-cat-label">${cat.name}</div>
+    <div class="card" style="box-shadow:none; border-color:var(--line); padding:4px 14px;">
+      ${cat.foods.map(f=>`
+        <div class="food-manager-row">
+          <span class="food-manager-name">${f.name}</span>
+          <select class="food-manager-select" data-food="${f.name}">
+            <option value="">ללא אלרגן</option>
+            ${ALLERGENS.map(a=>`<option value="${a.key}"${f.allergen===a.key?' selected':''}>${a.label}</option>`).join('')}
+          </select>
+          <button type="button" class="food-manager-detail-btn" data-food="${f.name}">${icon('pencil')}</button>
+        </div>`).join('')}
+    </div>
+  `).join('');
+  document.querySelectorAll('.food-manager-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>setFoodAllergen(sel.dataset.food, sel.value || null));
+  });
+  document.querySelectorAll('.food-manager-detail-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>openFoodDetailModal(btn.dataset.food));
+  });
+}
+async function setFoodAllergen(foodName, allergenKey){
+  const custom = (DATA.customFoods||[]).find(f=>f.name===foodName);
+  if(custom){
+    custom.allergen = allergenKey;
+  } else {
+    DATA.foodAllergenOverrides = DATA.foodAllergenOverrides || {};
+    DATA.foodAllergenOverrides[foodName] = allergenKey;
+  }
+  DATA.tastes.forEach(t=>{
+    (t.foods||[]).forEach(f=>{ if(f.name===foodName) f.allergen = allergenKey; });
+  });
+  await saveData();
+  renderFoodManagerList();
+  renderAllergenGrid();
+  renderTastesList();
+  toast('הקישור עודכן');
+}
+async function setFoodNutrition(foodName, nutrition){
+  const custom = (DATA.customFoods||[]).find(f=>f.name===foodName);
+  if(custom){
+    custom.nutrition = nutrition;
+  } else {
+    DATA.foodNutritionOverrides = DATA.foodNutritionOverrides || {};
+    DATA.foodNutritionOverrides[foodName] = nutrition;
+  }
+  await saveData();
+  renderTastesList();
+  toast('הערכים התזונתיים עודכנו');
+}
+function openFoodDetailModal(foodName){
+  const preset = findFoodPreset(foodName);
+  const nutrition = (preset && preset.nutrition) || EMPTY_NUTRITION;
+  $('foodDetailName').value = foodName;
+  $('foodDetailTitle').innerHTML = icon('pencil')+' '+foodName;
+  $('foodDetailFields').innerHTML = NUTRITION_FIELDS.map(([key,label])=>`
+    <div class="field"><label>${label}</label><input type="number" step="0.1" min="0" id="foodDetail_${key}" value="${nutrition[key]||0}"></div>
+  `).join('');
+  $('foodDetailOcrStatus').style.display = 'none';
+  $('foodDetailPhotoInput').value = '';
+  openModal('foodDetailModal');
+}
+$('foodDetailSaveBtn').addEventListener('click', async ()=>{
+  const foodName = $('foodDetailName').value;
+  const nutrition = {};
+  NUTRITION_FIELDS.forEach(([key])=>{
+    nutrition[key] = Number(document.getElementById('foodDetail_'+key).value) || 0;
+  });
+  await setFoodNutrition(foodName, nutrition);
+  closeModal('foodDetailModal');
+});
+$('foodDetailXBtn').addEventListener('click', ()=>closeModal('foodDetailModal'));
+const NUTRITION_OCR_KEYWORDS = {
+  kcal: [/אנרגיה[^\d]{0,15}(\d+(?:\.\d+)?)/, /קלוריות[^\d]{0,15}(\d+(?:\.\d+)?)/, /energy[^\d]{0,15}(\d+(?:\.\d+)?)/i, /calories[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  protein: [/חלבונ(?:ים|ות)?[^\d]{0,15}(\d+(?:\.\d+)?)/, /protein[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  carbs: [/פחמימ(?:ה|ות)[^\d]{0,15}(\d+(?:\.\d+)?)/, /carb(?:ohydrate)?s?[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  fat: [/שומנ(?:ים)?[^\d]{0,15}(\d+(?:\.\d+)?)/, /fat[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  fiber: [/סיבים(?: תזונתיים)?[^\d]{0,15}(\d+(?:\.\d+)?)/, /fib(?:er|re)[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  iron: [/ברזל[^\d]{0,15}(\d+(?:\.\d+)?)/, /iron[^\d]{0,15}(\d+(?:\.\d+)?)/i],
+  sugar: [/סוכר(?:ים)?[^\d]{0,15}(\d+(?:\.\d+)?)/, /sugar[^\d]{0,15}(\d+(?:\.\d+)?)/i]
+};
+function parseNutritionFromText(text){
+  const result = {};
+  for(const key in NUTRITION_OCR_KEYWORDS){
+    for(const re of NUTRITION_OCR_KEYWORDS[key]){
+      const m = text.match(re);
+      if(m){ result[key] = parseFloat(m[1]); break; }
+    }
+  }
+  return result;
+}
+let tesseractLoadPromise = null;
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(tesseractLoadPromise) return tesseractLoadPromise;
+  tesseractLoadPromise = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload = resolve;
+    s.onerror = ()=>reject(new Error('failed to load OCR library'));
+    document.head.appendChild(s);
+  });
+  return tesseractLoadPromise;
+}
+$('foodDetailPhotoTriggerBtn').addEventListener('click', ()=>$('foodDetailPhotoInput').click());
+$('foodDetailPhotoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  $('foodDetailOcrStatus').style.display = 'block';
+  $('foodDetailOcrStatus').textContent = 'טוען מנוע זיהוי טקסט…';
+  try{
+    await loadTesseract();
+    $('foodDetailOcrStatus').textContent = 'מזהה טקסט מהתמונה… זה יכול לקחת כמה שניות';
+    const worker = await Tesseract.createWorker('heb+eng');
+    const { data: { text } } = await worker.recognize(file);
+    await worker.terminate();
+    const parsed = parseNutritionFromText(text);
+    NUTRITION_FIELDS.forEach(([key])=>{
+      if(parsed[key]!=null){
+        const input = document.getElementById('foodDetail_'+key);
+        if(input) input.value = parsed[key];
+      }
+    });
+    const foundCount = Object.keys(parsed).length;
+    $('foodDetailOcrStatus').textContent = foundCount>0
+      ? `זוהו ${foundCount} ערכים אוטומטית מהתמונה — כדאי לבדוק ולתקן במידת הצורך לפני השמירה.`
+      : 'לא הצלחנו לזהות ערכים אוטומטית מהתמונה. אפשר למלא את השדות ידנית.';
+  }catch(err){
+    console.error(err);
+    $('foodDetailOcrStatus').textContent = 'שגיאה בזיהוי התמונה — אפשר למלא את השדות ידנית.';
+  }
+});
+$('openFoodManagerBtn').addEventListener('click', ()=>{
+  renderFoodManagerList();
+  openModal('foodManagerModal');
+});
+$('foodManagerXBtn').addEventListener('click', ()=>closeModal('foodManagerModal'));
 function renderAllergenGrid(){
   const counts = allergenExposureCounts();
   const lastTimes = allergenLastEatenTimes();
@@ -1288,12 +1580,14 @@ function renderTastesList(){
     let label = d.toLocaleDateString('he-IL', {weekday:'long', day:'2-digit', month:'2-digit'});
     if(key===todayStr) label = 'היום · ' + label;
     const rows = groups[key].map(t=>{
-      const foodTags = tasteFoodTagsHtml(t.foods);
+      const foodTags = tasteFoodTagsHtml(t);
+      const nutritionLine = formatNutritionSummary(computeTasteNutrition(t));
       return `
       <div class="tl-item editable" data-edit-id="${t.id}">
         <div class="tl-icon taste">${icon('spoon')}</div>
         <div class="tl-body">
           <div class="tl-title taste-food-tags">${foodTags}</div>
+          ${nutritionLine?`<div class="tl-meta">${nutritionLine}</div>`:''}
           ${t.note?`<div class="tl-meta">${t.note}</div>`:''}
           <div class="tl-meta">${fmtTime(t.time)}${t.by?` · <span class="who-badge">${t.by}</span>`:''}</div>
         </div>
@@ -1322,6 +1616,7 @@ function repeatTasteEntry(id){
   $('tasteModalTitle').innerHTML = icon('spoon')+' טעימה חדשה';
   $('tEditId').value = '';
   tasteSelectedFoods = (t.foods||[]).map(f=>({...f}));
+  tasteGroups = (t.foodGroups||[]).map(g=>({...g}));
   $('tNote').value = '';
   $('tTime').value = nowLocalInput();
   $('tDeleteBtn').style.display = 'none';
@@ -1365,14 +1660,62 @@ function timelineTitle(ev){
 function supplementDetailText(ev){
   return (ev.items||[]).join(', ');
 }
-function tasteFoodTagsHtml(foods){
-  const sorted = [...(foods||[])].sort((a,b)=>a.name.localeCompare(b.name,'he'));
-  return sorted.map(f=>{
+function tasteFoodTagsHtml(t){
+  const foods = (t && t.foods) || [];
+  const groups = (t && t.foodGroups) || [];
+  const ungrouped = [...foods.filter(f=>!f.groupId)].sort((a,b)=>a.name.localeCompare(b.name,'he'));
+  const individualTags = ungrouped.map(f=>{
     const color = findFoodCategoryColor(f.name);
     const dot = color ? `<span class="taste-food-dot" style="background:${color};"></span>` : '';
     const allergenMark = f.allergen ? icon('zap') : '';
-    return `<span class="taste-food-tag">${dot}${f.name}${allergenMark}</span>`;
+    const qty = (f.amount!=null && f.unit) ? ` (${f.amount} ${f.unit})` : '';
+    return `<span class="taste-food-tag">${dot}${f.name}${qty}${allergenMark}</span>`;
   }).join('');
+  const groupTags = groups.map(g=>{
+    const members = foods.filter(f=>f.groupId===g.id);
+    if(members.length===0) return '';
+    const names = members.map(m=>m.name).sort((a,b)=>a.localeCompare(b,'he')).join(', ');
+    const allergenMark = members.some(m=>m.allergen) ? icon('zap') : '';
+    const qty = (g.amount!=null && g.unit) ? ` (${g.amount} ${g.unit} ביחד)` : '';
+    return `<span class="taste-food-tag">${names}${qty}${allergenMark}</span>`;
+  }).join('');
+  return individualTags + groupTags;
+}
+function computeTasteNutrition(t){
+  const foods = (t && t.foods) || [];
+  const groups = (t && t.foodGroups) || [];
+  const total = {...EMPTY_NUTRITION};
+  foods.filter(f=>!f.groupId).forEach(f=>{
+    if(f.amount==null || !f.unit) return;
+    const grams = f.amount * (UNIT_TO_GRAMS[f.unit]||0);
+    const preset = findFoodPreset(f.name);
+    const nutrition = (preset && preset.nutrition) || EMPTY_NUTRITION;
+    Object.keys(total).forEach(k=>{ total[k] += (nutrition[k]||0) * grams / 100; });
+  });
+  groups.forEach(g=>{
+    if(g.amount==null || !g.unit) return;
+    const members = foods.filter(f=>f.groupId===g.id);
+    if(members.length===0) return;
+    const grams = g.amount * (UNIT_TO_GRAMS[g.unit]||0);
+    const avg = {...EMPTY_NUTRITION};
+    members.forEach(f=>{
+      const nutrition = (findFoodPreset(f.name)||{}).nutrition || EMPTY_NUTRITION;
+      Object.keys(avg).forEach(k=>{ avg[k] += (nutrition[k]||0)/members.length; });
+    });
+    Object.keys(total).forEach(k=>{ total[k] += avg[k] * grams / 100; });
+  });
+  return total;
+}
+function formatNutritionSummary(total){
+  const parts = [];
+  if(total.kcal>0.5) parts.push(`${Math.round(total.kcal)} קלוריות`);
+  if(total.protein>0.05) parts.push(`${total.protein.toFixed(1)} ג׳ חלבון`);
+  if(total.carbs>0.05) parts.push(`${total.carbs.toFixed(1)} ג׳ פחמימות`);
+  if(total.fat>0.05) parts.push(`${total.fat.toFixed(1)} ג׳ שומן`);
+  if(total.fiber>0.05) parts.push(`${total.fiber.toFixed(1)} ג׳ סיבים`);
+  if(total.iron>0.05) parts.push(`${total.iron.toFixed(1)} מ״ג ברזל`);
+  if(total.sugar>0.05) parts.push(`${total.sugar.toFixed(1)} ג׳ סוכר`);
+  return parts.join(' · ');
 }
 function localDateStrOf(iso){
   const d = new Date(iso);
@@ -1412,7 +1755,7 @@ function renderTodayTimeline(){
       <div class="tl-body">
         <div class="tl-title">${timelineTitle(ev)}</div>
         ${ev.type==='supplement'?`<div class="tl-meta">${supplementDetailText(ev)}</div>`:''}
-        ${ev.type==='taste'?`<div class="tl-meta taste-food-tags">${tasteFoodTagsHtml(ev.foods)}</div>`:''}
+        ${ev.type==='taste'?`<div class="tl-meta taste-food-tags">${tasteFoodTagsHtml(ev)}</div>`:''}
         ${ev.type==='taste'&&ev.note?`<div class="tl-meta">${ev.note}</div>`:''}
         <div class="tl-meta">${fmtTime(ev.time)}${crossDayNote(ev.time, endDateStr)}${ev.by?` · <span class="who-badge">${ev.by}</span>`:''}</div>
       </div>
