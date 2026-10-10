@@ -1682,6 +1682,8 @@ function renderStats(){
   const dayLabels = days.map(d=>d.toLocaleDateString('he-IL',{weekday:'short', day:'2-digit'}));
 
   const validDays = days.filter(d=>d >= TRACKING_START).length || 1;
+  const daysExcludingToday = days.slice(0, -1); // today is always partial, so averages below skip it
+  const validDaysExcludingToday = daysExcludingToday.filter(d=>d >= TRACKING_START).length || 1;
 
   // sleep hours per day: split any sleep spanning midnight across both days
   const sleepEvents = [...DATA.events].filter(e=>(e.type==='sleep'||e.type==='wake') && afterTrackingStart(e.time)).sort((a,b)=>new Date(a.time)-new Date(b.time));
@@ -1705,8 +1707,8 @@ function renderStats(){
     return DATA.events.filter(e=>e.type==='diaper' && afterTrackingStart(e.time) && new Date(e.time).toDateString()===d.toDateString()).length;
   });
 
-  const avgSleep = (sleepByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
-  const avgFeed = Math.round(feedByDay.reduce((a,b)=>a+b,0)/validDays);
+  const avgSleep = (sleepByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday).toFixed(1);
+  const avgFeed = Math.round(feedByDay.slice(0,-1).reduce((a,b)=>a+b,0)/validDaysExcludingToday);
   const avgDiaper = (diaperByDay.reduce((a,b)=>a+b,0)/validDays).toFixed(1);
   const totalMilestones = DATA.milestones.length;
 
